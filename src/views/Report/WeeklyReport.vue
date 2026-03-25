@@ -14,31 +14,31 @@
                                 </v-col>
                                 <v-col cols="12" md="4" align-self="center"
                                     :class="$vuetify.display.mdAndUp ? `mb-0` : `mb-n0`">
-                                    <v-text-field type="text" density="compact" readonly
-                                        @click.stop="dateDialog = !dateDialog" v-model="dateStr"
-                                        variant="outlined"></v-text-field>
+                                    <v-number-input type="text" density="compact" v-model="pagination.search.year"
+                                        variant="outlined"/>
                                 </v-col>
                                 <v-col cols="12" md="2"
                                     :class="$vuetify.display.mdAndUp ? `text-right` : `text-left mb-n4`">
-                                    <p class="text-body-2 mt-3">နှစ်</p>
+                                    <p class="text-body-2 mt-3">အပတ်စဉ်</p>
+                                </v-col>
+                                <v-col cols="12" md="4">
+                                    <v-autocomplete :items="weeklyList" item-title="name" item-value="id"
+                                        v-model="pagination.search.monthly_amount_id" density="compact"
+                                        variant="outlined"></v-autocomplete>
+                                </v-col>
+
+                            </v-row>
+                            <v-row class="mt-n4">
+                                 <v-col cols="12" md="2"
+                                    :class="$vuetify.display.mdAndUp ? `text-right` : `text-left mb-n4`">
+                                    <p class="text-body-2 mt-3">နံပါတ်</p>
                                 </v-col>
                                 <v-col cols="12" md="4" align-self="center"
                                     :class="$vuetify.display.mdAndUp ? `mb-0` : `mb-n0`">
                                     <v-text-field type="text" v-model="pagination.search.number" density="compact"
                                         variant="outlined" />
                                 </v-col>
-
-                            </v-row>
-                            <v-row class="mt-n4">
-                                <v-col cols="12" md="2"
-                                    :class="$vuetify.display.mdAndUp ? `text-right` : `text-left mb-n4`">
-                                    <p class="text-body-2 mt-3">ထည့်သွင်းသူ</p>
-                                </v-col>
-                                <v-col cols="12" md="4">
-                                    <v-autocomplete :items="userList" item-title="name" item-value="id"
-                                        v-model="pagination.search.user_id" density="compact"
-                                        variant="outlined"></v-autocomplete>
-                                </v-col>
+                               
                                 <v-col cols="12" md="6"
                                     :class="$vuetify.display.mdAndUp ? `text-right mt-3` : `text-right mt-n4`">
                                     <v-btn size="small" color="red darken-2" @click.stop="Reset"
@@ -59,7 +59,7 @@
                 <v-card elevation="2">
                     <v-card-title>
                         <v-row>
-                            <v-col cols="6"><span class="text-subtitle-1 font-weight-bold"> နေ့စဉ်အော်ဒါစာရင်း(ဂဏန်းဖြင့်)
+                            <v-col cols="6"><span class="text-subtitle-1 font-weight-bold"> အပတ်စဉ်အော်ဒါစာရင်း
                                 </span></v-col>
                             <v-col cols="6" class="text-right"> <span
                                     class="text-subtitle-1 font-weight-bold">စုစုပေါင်း - </span><span
@@ -139,7 +139,6 @@ const headers = [
     { title: 'Year', key: 'year', sortable: true },
     { title: 'Month', key: 'month_name', sortable: true },
     { title: 'From To', key: 'from_to', sortable: true },
-    { title: 'Created By', key: 'name', sortable: true },
 ];
 const recordTotal = ref(0);
 const items = ref([]);
@@ -178,6 +177,8 @@ const Reset = () => {
     dateStr.value = moment(pagination.value.search.date).format('DD/MM/yyyy')
     pagination.value.search.user_id = null
     pagination.value.search.number = ''
+    pagination.value.search.year = new Date().getFullYear()
+    pagination.value.search.monthly_amount_id = null
     GetAllData()
 }
 const ExportExcel = () => {
@@ -230,7 +231,7 @@ watch(()=>pagination.value.search.year,(newVal)=>{
     }
 })
 const GetWeeklyAmountList = (year) =>{
-    dropdownService.GetWeeklyAmountList().then((res)=>{
+    dropdownService.GetWeeklyAmountList(year).then((res)=>{
         weeklyList.value = res.data
         if(pagination.value.search.monthly_amount_id){
             pagination.value.search.monthly_amount_id = null
@@ -243,6 +244,6 @@ const GetWeeklyAmountList = (year) =>{
 }
 onMounted(() => {
     pagination.value.search.year = new Date().getFullYear()
-
+    GetWeeklyAmountList(pagination.value.search.year)
 })
 </script>

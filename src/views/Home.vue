@@ -1,26 +1,34 @@
 <template>
    <v-col cols="12">
         <v-row>
-            <v-col :cols="$vuetify.display.smAndDown? 12: 4">
+            <v-col :cols="$vuetify.display.smAndDown? 11: 3">
                 <v-card class="text-center" variant="flat" color="primary" :elevation="10">
                     <v-card-text>
-                        <p class=" font-weight-bold text-h6">Daily Total</p>
+                        <p class=" font-weight-bold text-h6">ယနေ့</p>
                         <p class="mt-1 font-weight-bold text-subtitle-1">{{ ordertotal.today_total ?? 0 }}</p>
                     </v-card-text>
                 </v-card>
             </v-col>
-            <v-col :cols="$vuetify.display.smAndDown? 12: 4">
+            <v-col :cols="$vuetify.display.smAndDown? 11: 3">
                 <v-card class="text-center" variant="flat" color="primary" :elevation="10">
                     <v-card-text>
-                        <p class=" font-weight-bold text-h6">Monthly Total</p>
+                        <p class=" font-weight-bold text-h6">ယခုအပတ်</p>
+                        <p class="mt-1 font-weight-bold text-subtitle-1">{{ ordertotal.weekly_total ?? 0 }}</p>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+            <v-col :cols="$vuetify.display.smAndDown? 11: 3">
+                <v-card class="text-center" variant="flat" color="primary" :elevation="10">
+                    <v-card-text>
+                        <p class=" font-weight-bold text-h6">ယခုလ</p>
                         <p class="mt-1 font-weight-bold text-subtitle-1">{{ ordertotal.monthly_total ?? 0 }}</p>
                     </v-card-text>
                 </v-card>
             </v-col>
-            <v-col :cols="$vuetify.display.smAndDown? 12: 4">
+            <v-col :cols="$vuetify.display.smAndDown? 11: 3">
                 <v-card class="text-center" variant="flat" color="primary" :elevation="10">
                     <v-card-text>
-                        <p class=" font-weight-bold text-h6">Yearly Total</p>
+                        <p class=" font-weight-bold text-h6">ယခုနှစ်</p>
                         <p class="mt-1 font-weight-bold text-subtitle-1">{{ ordertotal.yearly_total ?? 0 }}</p>
                     </v-card-text>
                 </v-card>
@@ -41,10 +49,12 @@ import UnauthorizeDialog from '@/components/UnauthorizeDialog.vue';
 import constants from '@/utils/constants';
 import DailyCompairsm from './Dashboard/DailyCompairsm.vue';
 import MonthlyCompairsm from './Dashboard/MonthlyCompairsm.vue';
+import weeklyreportService from '@/services/report/weeklyreport.service';
 const snackbarRef = ref(null)
 const unauthorizeRef = ref(null)
 const ordertotal = ref({
     today_total : 0,
+    weekly_total : 0,
     monthly_total : 0,
     yearly_total : 0
 })
@@ -58,10 +68,35 @@ const OrderTotal =()=>{
             snackbarRef.value.OpenSnackbar('red darken-2', err.message)
         }
     }).finally(()=>{
+         GetDetailsTotalAmount()
+    })
+}
+const pagination = ref({
+    search: {
+        name: '',
+        role_id: null,
+        user_id: null,
+        year : new Date().getFullYear(),
+        monthly_amount_id : null,
+        number: null,
+        date: new Date()
+    },
+    page: 1,
+    itemsPerPage: 10,
+    sortBy: [{ key: "number", order: "desc" }],
+})
+const GetDetailsTotalAmount = () => {
+    weeklyreportService.GetDetailsTotalAmount(pagination.value).then((res) => {
+       ordertotal.value.weekly_total = res.data
+    }).catch((err) => {
+
+    }).finally(() => {
 
     })
 }
 onMounted(()=>{
+   
     OrderTotal()
+    
 })
 </script>

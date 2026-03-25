@@ -38,8 +38,17 @@ class WeeklyReportService {
         };
         return api.get('/weeklyreport/export-excel', config)
     }
-    GetDetailsTotalAmount(){
-        return api.get('/weeklyreport/gettotal', {headers: AuthHeader()})
+    GetDetailsTotalAmount(param){
+        const config = {
+            headers: AuthHeader(),
+            params: {
+                name: param.search.name ?? '',
+                date: param.search.date,
+                created_by: param.search.user_id,
+                number: param.search.number
+            },
+        };
+        return api.get('/weeklyreport/gettotal',config)
     }
 }
 export default new WeeklyReportService()
