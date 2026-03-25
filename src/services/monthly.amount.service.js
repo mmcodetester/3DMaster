@@ -12,6 +12,8 @@ class MonthlyAmountService{
                 page: param.page,
                 length: param.itemsPerPage,
                 name : param.name ? param.name : '',
+                year: param.search.year,
+                month_id : param.search.month_id
             },
         };
         return api.get('/monthlyamount', config)
@@ -25,7 +27,12 @@ class MonthlyAmountService{
     GetById(id) {
         return api.get("/monthlyamount/getbyid?id=" + id, { headers: AuthHeader() });
     }
-
+    ChangeStauts(id) {
+        return api.get("/monthlyamount/changestatus?id=" + id, { headers: AuthHeader() });
+    }
+    GetActiveAmount(){
+        return api.get("/monthlyamount/getactiveamount", { headers: AuthHeader() });
+    }
 }
 
 export default new MonthlyAmountService()

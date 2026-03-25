@@ -20,7 +20,7 @@
                                 </v-col>
                                 <v-col cols="12" md="2"
                                     :class="$vuetify.display.mdAndUp ? `text-right` : `text-left mb-n4`">
-                                    <p class="text-body-2 mt-3">ဂဏန်း</p>
+                                    <p class="text-body-2 mt-3">နှစ်</p>
                                 </v-col>
                                 <v-col cols="12" md="4" align-self="center"
                                     :class="$vuetify.display.mdAndUp ? `mb-0` : `mb-n0`">
@@ -94,7 +94,6 @@
         </v-dialog>
         <UnauthorizeDialog ref="unauthorizeRef" />
         <SnackbarDialog ref="snackbarRef" />
-        <ConfirmDialog ref="confirmRef" @confirm="Delete" />
     </v-col>
 </template>
 <script setup>
@@ -105,6 +104,7 @@ import SnackbarDialog from '@/components/SnackbarDialog.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import moment from 'moment';
 import dropdownService from '@/services/dropdown.service';
+import weeklyreportService from '@/services/report/weeklyreport.service';
 
 const dateStr = ref('')
 
@@ -116,6 +116,7 @@ const confirmRef = ref(null)
 const dateDialog = ref(false)
 const loading = ref(false)
 const userList = ref([])
+const weeklyList = ref([])
 const total = ref(0)
 const selected_id = ref(0)
 const pagination = ref({
@@ -123,6 +124,8 @@ const pagination = ref({
         name: '',
         role_id: null,
         user_id: null,
+        year : new Date().getFullYear(),
+        monthly_amount_id : null,
         number: null,
         date: new Date()
     },
@@ -133,10 +136,9 @@ const pagination = ref({
 const headers = [
     { title: 'Number', key: 'number', sortable: true },
     { title: 'Total Amount', key: 'total_amount', sortable: true },
-    { title: 'Order Count', key: 'order_count', sortable: true },
     { title: 'Year', key: 'year', sortable: true },
     { title: 'Month', key: 'month_name', sortable: true },
-    { title: 'Month', key: 'from_to', sortable: true },
+    { title: 'From To', key: 'from_to', sortable: true },
     { title: 'Created By', key: 'name', sortable: true },
 ];
 const recordTotal = ref(0);
@@ -147,7 +149,7 @@ const GetAllData =() =>{
 }
 const GetAll = () => {
     loading.value = true
-    dailyreportService.GetAll(pagination.value).then((res) => {
+    weeklyreportService.GetAll(pagination.value).then((res) => {
         console.log(res)
         items.value = res.data.data
         recordTotal.value = res.data.total
@@ -162,19 +164,7 @@ const GetAll = () => {
         loading.value = false
     })
 }
-const GetUserList = () => {
-    dropdownService.GetUserList().then((res) => {
-        userList.value = res.data
-    }).catch((err) => {
-        if (err.message == constants.UnauthorizeMessage) {
-            unauthorizeRef.value.OpenDialog()
-        } else {
-            snackbarRef.value.OpenSnackbar('red darken-2 ', err.message)
-        }
-    }).finally(() => {
 
-    })
-}
 const ChangeToDate = (val) => {
     if (val) {
         pagination.value.search.date = val
@@ -182,31 +172,7 @@ const ChangeToDate = (val) => {
         dateDialog.value = !dateDialog.value
     }
 }
-const ConfirmDelete = (id) => {
-    selected_id.value = id
-    confirmRef.value.OpenDialog('Daily Report Delete Alert', 'Are you sure to delete this record?')
-}
-const Delete = (val) => {
-    if (val) {
-        dailyreportService.Delete(selected_id.value).then((res) => {
-            const color = res.data.success ? 'success' : 'red darken-2'
-            const message = res.data.messages[0]
-            if (res.data.success) {
-                GetAllData()
-            }
-            snackbarRef.value.OpenSnackbar(color, message)
-        }).catch((err) => {
-            if (err.message == constants.UnauthorizeMessage) {
-                unauthorizeRef.value.OpenDialog()
-            } else {
-                snackbarRef.value.OpenSnackbar('red darken-2', err.message)
-            }
-        }).finally(() => {
 
-        })
-    }
-    selected_id.value = 0
-}
 const Reset = () => {
     pagination.value.search.date = new Date()
     dateStr.value = moment(pagination.value.search.date).format('DD/MM/yyyy')
@@ -217,7 +183,7 @@ const Reset = () => {
 const ExportExcel = () => {
     excelLoading.value = true
 
-    dailyreportService.ExportExcel(pagination.value)
+    weeklyreportService.ExportExcel(pagination.value)
         .then((res) => {
             if (res) {
                 const blob = new Blob([res.data], {
@@ -249,7 +215,7 @@ const ExportExcel = () => {
         })
 }
 const GetDetailsTotalAmount = () => {
-    dailyreportService.GetDetailsTotalAmount(pagination.value).then((res) => {
+    weeklyreportService.GetDetailsTotalAmount(pagination.value).then((res) => {
         console.log(res.data)
         total.value = res.data
     }).catch((err) => {
@@ -258,9 +224,25 @@ const GetDetailsTotalAmount = () => {
 
     })
 }
+watch(()=>pagination.value.search.year,(newVal)=>{
+    if(newVal){
+        GetWeeklyAmountList(newVal)
+    }
+})
+const GetWeeklyAmountList = (year) =>{
+    dropdownService.GetWeeklyAmountList().then((res)=>{
+        weeklyList.value = res.data
+        if(pagination.value.search.monthly_amount_id){
+            pagination.value.search.monthly_amount_id = null
+        }
+    }).catch((err)=>{
+
+    }).finally(()=>{
+
+    })
+}
 onMounted(() => {
-    pagination.value.search.date = new Date()
-    dateStr.value = moment(pagination.value.search.date).format('DD/MM/yyyy')
-    GetUserList()
+    pagination.value.search.year = new Date().getFullYear()
+
 })
 </script>

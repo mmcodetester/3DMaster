@@ -23,7 +23,7 @@
 <script setup>
 import { ref } from 'vue';
 const dialog = ref(false)
-const emit = defineEmits('confirm')
+const emit = defineEmits(['confirm'])
 const alertMessage = ref('')
 const alertTitle = ref('')
 const CancelClick = () =>{

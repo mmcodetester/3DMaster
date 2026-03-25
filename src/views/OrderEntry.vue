@@ -18,64 +18,78 @@
                     <v-row class="mt-2">
                         <v-col :cols="$vuetify.display.smAndDown ? 12 : 3"
                             :class="$vuetify.display.smAndDown ? 'text-left' : 'text-right'">
-                            <p :class="$vuetify.display.smAndDown ? '' : 'mt-3'">Number <span class="text-red">*</span></p>
+                            <p :class="$vuetify.display.smAndDown ? '' : 'mt-3'">Number <span class="text-red">*</span>
+                            </p>
                         </v-col>
                         <v-col :cols="$vuetify.display.smAndDown ? 12 : 8"
                             :class="$vuetify.display.smAndDown ? 'text-left mt-n2' : 'text-right'">
-                            <v-text-field required :rules="numberRules" v-model="model.number" readonly variant="outlined"
-                                density="comfortable"></v-text-field>
+                            <v-text-field required :rules="numberRules" v-model="model.number" readonly class="font-weight-bold"
+                                variant="outlined" density="comfortable"></v-text-field>
                         </v-col>
                     </v-row>
                     <v-row :class="$vuetify.display.smAndDown ? 'mt-n3' : ''">
                         <v-col :cols="$vuetify.display.smAndDown ? 12 : 3"
                             :class="$vuetify.display.smAndDown ? 'text-left' : 'text-right'">
-                            <p :class="$vuetify.display.smAndDown ? '' : 'mt-3'">Available <span class="text-red">*</span></p>
+                            <p :class="$vuetify.display.smAndDown ? '' : 'mt-3'">Available <span
+                                    class="text-red">*</span></p>
                         </v-col>
                         <v-col :cols="$vuetify.display.smAndDown ? 12 : 8"
                             :class="$vuetify.display.smAndDown ? 'text-left mt-n2' : 'text-right'">
-                            <v-text-field required :rules="availableRules" v-model="model.avaliable" readonly variant="outlined"
-                                density="comfortable"></v-text-field>
+                            <v-text-field required :rules="availableRules" v-model="model.avaliable" readonly class="font-weight-bold"
+                                variant="outlined" density="comfortable"></v-text-field>
                         </v-col>
                     </v-row>
                     <v-row :class="$vuetify.display.smAndDown ? 'mt-n3' : ''">
                         <v-col :cols="$vuetify.display.smAndDown ? 12 : 3"
                             :class="$vuetify.display.smAndDown ? 'text-left' : 'text-right'">
-                            <p :class="$vuetify.display.smAndDown ? '' : 'mt-3'">Amount <span class="text-red">*</span></p>
+                            <p :class="$vuetify.display.smAndDown ? '' : 'mt-3'">Amount <span class="text-red">*</span>
+                            </p>
                         </v-col>
                         <v-col :cols="$vuetify.display.smAndDown ? 12 : 8"
                             :class="$vuetify.display.smAndDown ? 'text-left mt-n2' : 'text-right'">
-                            <v-number-input required :rueles="amountRules(model.avaliable)" :min="1" :max="model.avaliable" v-model="model.amount" variant="outlined"
+                            <v-number-input required :rueles="amountRules(model.avaliable)" :min="1" class="font-weight-bold"
+                                :max="model.avaliable" v-model="model.amount" variant="outlined"
                                 density="comfortable"></v-number-input>
                         </v-col>
                     </v-row>
-                    <v-row>
-                        <v-col cols="12" class="text-right">
-                            <v-btn type="button" @click.stop="CloseDialog" size="large" prepend-icon="mdi-cancel" color="warning" class="mr-2">Cancel</v-btn>
-                            <v-btn type="submit" size="large" prepend-icon="mdi-content-save-check-outline"
-                                color="primary">Add</v-btn>
+                    <v-row class="mt-n5">
+                        <v-col :cols="$vuetify.display.smAndDown ? 12 : 11" class="text-right" >
+                            <v-btn type="button" @click.stop="CloseDialog" size="large" prepend-icon="mdi-cancel"
+                                color="warning" class="mr-2">Cancel</v-btn>
+                            <v-btn type="submit" :loading="saveLoading" size="large" prepend-icon="mdi-content-save-check-outline"
+                                color="primary">Save</v-btn>
                         </v-col>
                     </v-row>
                 </v-form>
             </v-card-text>
         </v-card>
     </v-dialog>
+    <snackbar-dialog ref="snackbarRef"/>
+    <unauthorize-dialog ref="unauthorizeRef"/>
 </template>
 <script setup>
 import Order from '@/models/order.model'
+import orderService from '@/services/order.service'
 import { useAppStore } from '@/stores/app'
+import constants from '@/utils/constants'
+const emit = defineEmits(['saved'])
+
+const unauthorizeRef = ref(null)
+const snackbarRef = ref(null)
 
 const store = useAppStore()
 const isValid = ref(false)
+const saveLoading = ref(false)
 
-const numberRules = [(v)=> !!v || 'Number is required'];
+const numberRules = [(v) => !!v || 'Number is required'];
 
 const availableRules = [
-  v => !!v || 'Available is required',
-  v => v > 0 || 'Available must be greater than 0'
+    v => !!v || 'Available is required',
+    v => v > 0 || 'Available must be greater than 0'
 ];
 const amountRules = (available) => [
-  v => !!v || 'Amount is required',
-  v => v <= available || 'Amount cannot be greater than available'
+    v => !!v || 'Amount is required',
+    v => v <= available || 'Amount cannot be greater than available'
 ];
 const dialog = ref(false)
 const model = ref(new Order())
@@ -88,12 +102,37 @@ const OpenDialog = (data) => {
 }
 const Save = () => {
     if (isValid.value) {
-        store.AddToOrderList(model.value)
-        CloseDialog()
+        if (model.value.avaliable >= model.value.amount) {
+            saveLoading.value = true
+            store.orderList.total = model.value.amount
+            store.orderList.data = []
+            store.orderList.data.push(model.value)
+            orderService.Save(store.orderList).then((res) => {
+                const color = res.data.success ? 'success' : 'red darken-2'
+                const message = res.data.messages[0]
+                snackbarRef.value.OpenSnackbar(color, message)
+                if (res.data.success) {
+                    emit('saved')
+                    store.orderList.total = 0
+                    store.orderList.data = []
+                }
+            }).catch((err) => {
+                if (err.message == constants.UnauthorizeMessage) {
+                    unauthorizeRef.value.OpenDialog()
+                } else {
+                    snackbarRef.value.OpenSnackbar('red darken-2', err.message)
+                }
+            }).finally(() => {
+                saveLoading.value = false
+                dialog.value = false
+            })
+        }
     }
 }
 const CloseDialog = () => {
     model.value = new Order()
+    store.orderList.total = 0
+    store.orderList.data = []
     dialog.value = false
 }
 defineExpose({

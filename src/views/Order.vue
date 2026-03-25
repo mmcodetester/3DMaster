@@ -43,7 +43,7 @@
                 </v-row>
             </v-card-text>
         </v-card>
-        <v-card>
+        <!-- <v-card  class="mt-2">
             <v-card-title>
                 Order List
             </v-card-title>
@@ -64,10 +64,7 @@
                             <td>{{ item.amount }}</td>
                             <td class="text-center">
                                  <v-btn rounded="lg" color="red-darken-4" class="ml-2" size="small" variant="outlined" prepend-icon="mdi-trash-can-outline" @click.stop="store.RemoveFromOrderList(item.number_id)">Remove</v-btn>
-                                <!-- <v-btn size="small" color="red" variant="text"
-                                    @click="store.RemoveFromOrderList(item.number_id)">
-                                    Remove
-                                </v-btn> -->
+
                             </td>
                         </tr>
                         <tr v-if="store.orderList.data.length > 0">
@@ -76,11 +73,9 @@
                             </td>
                             <td>{{ store.orderList.total }}</td>
                             <td class="text-center">
-                                <v-btn @click.stop="Save" :loading="saveLoading" size="small" color="primary">Save</v-btn>
+                                <v-btn @click.stop="Save" :disabled="store.orderList.total == 0" :loading="saveLoading" size="small" color="primary">Save</v-btn>
                             </td>
                         </tr>
-
-                        <!-- Empty State -->
                         <tr v-if="store.orderList.data.length === 0">
                             <td colspan="3" class="text-center text-grey">
                                 No orders added
@@ -89,9 +84,9 @@
                     </tbody>
                 </v-table>
             </v-card-text>
-        </v-card>
+        </v-card> -->
     </v-col>
-    <OrderEntry ref="entryRef" />
+    <OrderEntry ref="entryRef" @saved="GetAll" />
     <SnackbarDialog ref="snackbarRef"/>
     <UnauthorizeDialog ref="unauthorizeRef"/>
 </template>
@@ -152,6 +147,8 @@ const OpenEntry = (data) => {
     entryRef.value.OpenDialog(data)
 }
 onMounted(() => {
+    store.orderList.data = []
+    store.orderList.total = 0
     GetAll()
 })
 </script>

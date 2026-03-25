@@ -23,19 +23,46 @@
                         </v-col>
                         <v-col :cols="$vuetify.display.smAndDown ? 12 : 8"
                             :class="$vuetify.display.smAndDown ? 'text-left mt-n2' : 'text-right'">
-                            <v-text-field required :rules="yearRules" v-model="model.year" @click.stop="dateDialog = !dateDialog" readonly
-                                variant="outlined" density="comfortable"></v-text-field>
+                            <v-text-field type="year" required :rules="yearRules" v-model="model.year"
+                                @click.stop="dateDialog = !dateDialog" readonly variant="outlined"
+                                density="comfortable"></v-text-field>
                         </v-col>
                     </v-row>
                     <v-row :class="$vuetify.display.smAndDown ? 'mt-n3' : ''">
                         <v-col :cols="$vuetify.display.smAndDown ? 12 : 3"
                             :class="$vuetify.display.smAndDown ? 'text-left' : 'text-right'">
-                            <p :class="$vuetify.display.smAndDown ? '' : 'mt-3'">Month</p>
+                            <p :class="$vuetify.display.smAndDown ? '' : 'mt-3'">Month <span class="text-red">*</span>
+                            </p>
                         </v-col>
                         <v-col :cols="$vuetify.display.smAndDown ? 12 : 8"
                             :class="$vuetify.display.smAndDown ? 'text-left mt-n2' : 'text-right'">
-                            <v-autocomplete required :rules="monthRules" :items="monthList" v-model="model.month_id" item-title="month_name"
-                                item-value="id" variant="outlined" density="comfortable"></v-autocomplete>
+                            <v-autocomplete required :rules="monthRules" :items="monthList" v-model="model.month_id"
+                                item-title="month_name" item-value="id" variant="outlined"
+                                density="comfortable"></v-autocomplete>
+                        </v-col>
+                    </v-row>
+                    <v-row :class="$vuetify.display.smAndDown ? 'mt-n3' : ''">
+                        <v-col :cols="$vuetify.display.smAndDown ? 12 : 3"
+                            :class="$vuetify.display.smAndDown ? 'text-left' : 'text-right'">
+                            <p :class="$vuetify.display.smAndDown ? '' : 'mt-3'">From Day <span
+                                    class="text-red">*</span></p>
+                        </v-col>
+                        <v-col :cols="$vuetify.display.smAndDown ? 12 : 8"
+                            :class="$vuetify.display.smAndDown ? 'text-left mt-n2' : 'text-right'">
+                            <v-number-input required :rules="fromRules" :min="1" v-model="model.from_day"
+                                variant="outlined" density="comfortable"></v-number-input>
+                        </v-col>
+                    </v-row>
+                    <v-row :class="$vuetify.display.smAndDown ? 'mt-n3' : ''">
+                        <v-col :cols="$vuetify.display.smAndDown ? 12 : 3"
+                            :class="$vuetify.display.smAndDown ? 'text-left' : 'text-right'">
+                            <p :class="$vuetify.display.smAndDown ? '' : 'mt-3'">To Day<span class="text-red">*</span>
+                            </p>
+                        </v-col>
+                        <v-col :cols="$vuetify.display.smAndDown ? 12 : 8"
+                            :class="$vuetify.display.smAndDown ? 'text-left mt-n2' : 'text-right'">
+                            <v-number-input required :rules="toRules" v-model="model.to_day" variant="outlined"
+                                density="comfortable"></v-number-input>
                         </v-col>
                     </v-row>
                     <v-row :class="$vuetify.display.smAndDown ? 'mt-n3' : ''">
@@ -46,15 +73,16 @@
                         </v-col>
                         <v-col :cols="$vuetify.display.smAndDown ? 12 : 8"
                             :class="$vuetify.display.smAndDown ? 'text-left mt-n2' : 'text-right'">
-                            <v-number-input required :rules="amountRules" :min="1" v-model="model.amount" variant="outlined"
-                                density="comfortable"></v-number-input>
+                            <v-number-input required :rules="amountRules" :min="1" v-model="model.amount"
+                                variant="outlined" density="comfortable"></v-number-input>
                         </v-col>
                     </v-row>
                     <v-row>
                         <v-col cols="12" class="text-right">
-                            <v-btn type="button" size="large" prepend-icon="mdi-cancel" color="warning" class="mr-2">Cancel</v-btn>
-                            <v-btn type="submit" :loading="loading" size="large" prepend-icon="mdi-content-save-check-outline"
-                                color="primary">Save</v-btn>
+                            <v-btn type="button" size="large" prepend-icon="mdi-cancel" color="warning"
+                                class="mr-2">Cancel</v-btn>
+                            <v-btn type="submit" :loading="loading" size="large"
+                                prepend-icon="mdi-content-save-check-outline" color="primary">Save</v-btn>
                         </v-col>
                     </v-row>
                 </v-form>
@@ -64,14 +92,19 @@
     </v-dialog>
     <v-dialog persistent v-model="dateDialog">
         <v-row class="justify-center">
-            <v-col :cols="$vuetify.display.smAndDown ? 11 : 4">
-                <v-date-picker v-model:year="date" :show-week="false" header="Select Year" :hide-header="false"
-                    type="year" view-mode="year" @update:year="ChangeDate" color="primary"></v-date-picker>
+            <v-col :cols="$vuetify.display.smAndDown ? 11 : 5">
+                <v-card>
+                    <v-card-text>
+                        <v-date-picker-years v-model="date" view-mode="years" :hide-title="false" type="year" header="Select Year"
+                    @update:model-value="ChangeDate" color="primary" />
+                    </v-card-text>
+                </v-card>
+                
             </v-col>
         </v-row>
     </v-dialog>
-    <snackbar-dialog ref="snackbarRef"/>
-    <unauthorize-dialog ref="unauthorizeRef"/>
+    <snackbar-dialog ref="snackbarRef" />
+    <unauthorize-dialog ref="unauthorizeRef" />
 </template>
 <script setup>
 import MonthlyRate from '@/models/monthly.rate.model'
@@ -93,27 +126,26 @@ const loading = ref(false)
 const yearRules = [(v) => !!v || 'year is required']
 const monthRules = [(v) => !!v || 'month is required']
 const amountRules = [(v) => !!v || 'amount is required']
+const fromRules = [(v) => !!v || 'from day is required']
+const toRules = [(v) => !!v || 'to day is required']
 const OpenDialog = (id) => {
-    if(id>0){
+    if (id > 0) {
         GetById(id)
     }
     dialog.value = true
 }
-const GetById = (id) =>{
-    service.GetById(id).then((res)=>{
+const GetById = (id) => {
+    service.GetById(id).then((res) => {
         model.value = res.data
-    }).catch((err)=>{
+    }).catch((err) => {
 
-    }).finally(()=>{
+    }).finally(() => {
 
     })
 }
 const ChangeDate = (val) => {
-    if (val) {
-        date.value = val
-        model.value.year = val
+    model.value.year = date.value
         dateDialog.value = !dateDialog.value
-    }
 }
 const CloseDialog = () => {
     dialog.value = false
@@ -128,24 +160,24 @@ const GetMonthList = () => {
 
     })
 }
-const Save = () =>{
-    if(isValid.value){
+const Save = () => {
+    if (isValid.value) {
         loading.value = true
-        service.Save(model.value).then((res)=>{
+        service.Save(model.value).then((res) => {
             const color = res.data.success ? 'success' : 'red darken-2'
             const message = res.data.messages[0]
             snackbarRef.value.OpenSnackbar(color, message)
-            if(res.data.success){
+            if (res.data.success) {
                 dialog.value = false
                 emit('saved')
             }
-        }).catch((err)=>{
-            if(err.message == constants.UnauthorizeMessage){
+        }).catch((err) => {
+            if (err.message == constants.UnauthorizeMessage) {
                 unauthorizeRef.value.OpenDialog()
-            }else{
+            } else {
                 snackbarRef.value.OpenSnackbar('red darken-2', err.message)
             }
-        }).finally(()=>{
+        }).finally(() => {
             loading.value = false
         })
     }

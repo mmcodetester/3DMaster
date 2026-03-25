@@ -1,5 +1,5 @@
 <template>
-  <v-navigation-drawer v-model="drawer">
+  <v-navigation-drawer v-model="drawer" width="350">
     <v-list-item class="text-center">
       <v-avatar :image="Logo" border="sm" contain>
       </v-avatar>
@@ -76,16 +76,15 @@ const store = ref({
   },
 })
 const items = ref([
-  { id: 1, title: 'Dashboard', url: '/', icon: 'mdi-view-dashboard', children: [] },
-  { id: 2, title: 'Order', url: '/order', icon: 'mdi-cart-outline', children: [] },
-  { id: 3, title: 'Monthly Amount', url: '/monthly-amount', icon: 'mdi-currency-usd', children: [] },
-  { id: 5, title: 'User', url: '/user', icon: 'mdi-account-multiple-outline', children: [] },
+  { id: 1, title: 'မူလစာမျက်နှာ', url: '/', icon: 'mdi-view-dashboard', children: [] },
+  { id: 2, title: 'အော်ဒါစာရင်းတင်ခြင်း', url: '/order', icon: 'mdi-cart-outline', children: [] },
+  { id: 3, title: 'အပတ်စဉ်လက်ခံစာရင်း', url: '/monthly-amount', icon: 'mdi-currency-usd', children: [] },
+  { id: 4, title: 'စနစ်အသုံးပြုသူ', url: '/user', icon: 'mdi-account-multiple-outline', children: [] },
   {
-    id: 4, title: 'Reports', url: '/reports', icon: 'mdi-file-table-outline', children: [
-      { id: 8, title: 'Details Report', url: '/details-report', icon: 'mdi-chevron-right' },
-      { id: 5, title: 'Daily Report', url: '/daily-report', icon: 'mdi-chevron-right' },
-      { id: 6, title: 'Monthly Report', url: '/monthly-report', icon: 'mdi-chevron-right' },
-      { id: 7, title: 'Daily Report', url: '/dreport', icon: 'mdi-chevron-right' }
+    id: 5, title: 'အစီအရင်ခံစာများ', url: '/reports', icon: 'mdi-file-table-outline', children: [
+      { id: 6, title: 'နေ့စဉ်အော်ဒါစာရင်း(အားလုံး)', url: '/details-report', icon: 'mdi-chevron-right' },
+      { id: 7, title: 'နေ့စဉ်အော်ဒါစာရင်း(ဂဏန်းဖြင့်)', url: '/daily-report', icon: 'mdi-chevron-right' },
+      { id: 8, title: 'အပတ်စဉ်အော်ဒါစာရင်း', url: '/weekly-report', icon: 'mdi-chevron-right' },
     ]
   },
 ])
