@@ -1,6 +1,6 @@
 <template>
    <v-col cols="12">
-        <v-row>
+        <v-row class="justify-center">
             <v-col :cols="$vuetify.display.smAndDown? 11: 3">
                 <v-card class="text-center" variant="flat" color="primary" :elevation="10">
                     <v-card-text>
