@@ -86,7 +86,7 @@
         </v-row>
         <v-dialog persistent v-model="dateDialog">
             <v-row class="justify-center">
-                <v-col cols="4">
+                <v-col cols="12">
                     <v-date-picker v-model="pagination.search.date" @update:model-value="ChangeToDate"
                         color="primary"></v-date-picker>
                 </v-col>

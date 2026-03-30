@@ -136,8 +136,8 @@ const pagination = ref({
 const headers = [
     { title: 'Number', key: 'number', sortable: true },
     { title: 'Total Amount', key: 'total_amount', sortable: true },
-    { title: 'Year', key: 'year', sortable: true },
-    { title: 'Month', key: 'month_name', sortable: true },
+    { title: 'Year', key: 'year', sortable: false },
+    { title: 'Month', key: 'month_name', sortable: false },
     { title: 'From To', key: 'from_to', sortable: true },
 ];
 const recordTotal = ref(0);
@@ -183,7 +183,6 @@ const Reset = () => {
 }
 const ExportExcel = () => {
     excelLoading.value = true
-
     weeklyreportService.ExportExcel(pagination.value)
         .then((res) => {
             if (res) {
@@ -233,8 +232,24 @@ watch(()=>pagination.value.search.year,(newVal)=>{
 const GetWeeklyAmountList = (year) =>{
     dropdownService.GetWeeklyAmountList(year).then((res)=>{
         weeklyList.value = res.data
-        if(pagination.value.search.monthly_amount_id){
+        const filter = res.data.filter(x=>x.id == pagination.value.search.monthly_amount_id)
+        if(!filter){
             pagination.value.search.monthly_amount_id = null
+        }
+    }).catch((err)=>{
+
+    }).finally(()=>{
+
+    })
+}
+const GetInitialWeeklyAmountList = (year) =>{
+    dropdownService.GetWeeklyAmountList(year).then((res)=>{
+        weeklyList.value = res.data
+        
+        const filter = res.data.filter(x=>x.status)[0]
+        if(filter){
+            console.log('initital')
+            pagination.value.search.monthly_amount_id = filter.id
         }
     }).catch((err)=>{
 
@@ -244,6 +259,7 @@ const GetWeeklyAmountList = (year) =>{
 }
 onMounted(() => {
     pagination.value.search.year = new Date().getFullYear()
-    GetWeeklyAmountList(pagination.value.search.year)
+    GetInitialWeeklyAmountList(pagination.value.search.year)
+   
 })
 </script>

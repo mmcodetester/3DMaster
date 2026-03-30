@@ -12,6 +12,7 @@ import Order from '@/views/Order.vue'
 import DailyReport from '@/views/Report/DailyReport.vue'
 import DetailsReport from '@/views/Report/DetailsReport.vue'
 import WeeklyReport from '@/views/Report/WeeklyReport.vue'
+import WeeklyReportPerUser from '@/views/Report/WeeklyReportPerUser.vue'
 import UserList from '@/views/User/UserList.vue'
 
 import { createRouter, createWebHistory } from 'vue-router'
@@ -76,6 +77,14 @@ const routes = [
     path:'/weekly-report',
     name:'WeeklyReport',
     component: WeeklyReport,
+    meta:{
+      layout:'default-layout'
+    }
+  },
+  {
+    path:'/weekly-per-user-report',
+    name:'WeeklyReportPerUser',
+    component: WeeklyReportPerUser,
     meta:{
       layout:'default-layout'
     }

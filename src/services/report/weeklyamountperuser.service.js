@@ -1,7 +1,7 @@
 import api from "../api";
 import AuthHeader from "../auth.header";
 
-class WeeklyReportService {
+class WeeklyAmountPerUserService {
     GetAll(param) {
         const config = {
             headers: AuthHeader(),
@@ -13,12 +13,11 @@ class WeeklyReportService {
                 length: param.itemsPerPage,
                 name: param.search.name ? param.search.name : '',
                 date: param.search.date,
-                created_by: param.search.user_id,
-                number: param.search.number,
-                monthly_amount_id : param.search.monthly_amount_id
+                id: param.search.user_id,
+                number: param.search.number
             },
         };
-        return api.get('/weeklyreport', config)
+        return api.get('/weeklyamountperuser', config)
     }
     ExportExcel(param) {
         const config = {
@@ -32,13 +31,12 @@ class WeeklyReportService {
                 length: param.itemsPerPage,
                 name: param.search.name ? param.search.name : '',
                 date: param.search.date,
-                created_by: param.search.user_id,
-                number: param.search.number,
-                monthly_amount_id : param.search.monthly_amount_id
+                id: param.search.user_id,
+                number: param.search.number
             },
             responseType: 'blob'
         };
-        return api.get('/weeklyreport/export-excel', config)
+        return api.get('/weeklyamountperuser/export-excel', config)
     }
     GetDetailsTotalAmount(param){
         const config = {
@@ -46,12 +44,11 @@ class WeeklyReportService {
             params: {
                 name: param.search.name ?? '',
                 date: param.search.date,
-                created_by: param.search.user_id,
-                number: param.search.number,
-                monthly_amount_id : param.search.monthly_amount_id
+                id: param.search.user_id,
+                number: param.search.number
             },
         };
-        return api.get('/weeklyreport/gettotal',config)
+        return api.get('/weeklyamountperuser/gettotal',config)
     }
 }
-export default new WeeklyReportService()
+export default new WeeklyAmountPerUserService()
