@@ -50,5 +50,9 @@ class WeeklyAmountPerUserService {
         };
         return api.get('/weeklyamountperuser/gettotal',config)
     }
+    GetCompairsm(){
+        return api.get('/weeklyamountperuser/getcompairsm',{headers: AuthHeader()})
+    }
 }
+
 export default new WeeklyAmountPerUserService()

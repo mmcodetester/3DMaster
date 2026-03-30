@@ -7,7 +7,7 @@
 // Styles
 import '@mdi/font/css/materialdesignicons.css'
 import 'vuetify/styles'
-
+import { VPie } from 'vuetify/labs/VPie'
 // Composables
 import { createVuetify } from 'vuetify'
 
@@ -15,5 +15,8 @@ import { createVuetify } from 'vuetify'
 export default createVuetify({
   theme: {
     defaultTheme: 'system',
+  },
+   components: {
+    VPie,
   },
 })

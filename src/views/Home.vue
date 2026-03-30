@@ -34,6 +34,7 @@
                 </v-card>
             </v-col>
         </v-row>
+        <WeeklyCompairsm/>
         <DailyCompairsm/>
         <MonthlyCompairsm/>
    </v-col>
@@ -50,6 +51,7 @@ import constants from '@/utils/constants';
 import DailyCompairsm from './Dashboard/DailyCompairsm.vue';
 import MonthlyCompairsm from './Dashboard/MonthlyCompairsm.vue';
 import weeklyreportService from '@/services/report/weeklyreport.service';
+import WeeklyCompairsm from './Dashboard/WeeklyCompairsm.vue';
 const snackbarRef = ref(null)
 const unauthorizeRef = ref(null)
 const ordertotal = ref({
