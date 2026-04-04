@@ -178,7 +178,7 @@ onMounted(() => {
     //     console.log("connect")
     // });
     GetAll()
-    SendSocketEvent()
+    //SendSocketEvent()
     socket.subscribe('fullnumbers', (data) => {
         console.log(data)
         store.SetFullOrderList(data)
