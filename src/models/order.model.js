@@ -3,6 +3,7 @@ export default class Order{
     id = 0
     number_id = null
     number = ''
-    amount = 0
-    avaliable = 0
+    amount = null
+    extra = null
+    avaliable = null
 }

@@ -6,14 +6,18 @@ export const useAppStore = defineStore('app', {
     orderList: {
       data: [],
       total: 0
-    }
+    },
+    fullOrderList:[]
   }),
   actions: {
     AddToOrderList(order) {
       this.orderList.data.push(order)
       this.CalculateTotal()
     },
-
+    SetFullOrderList (data){
+      this.fullOrderList = []
+      this.fullOrderList = data
+    },
     RemoveFromOrderList(number_id) {
       this.orderList.data = this.orderList.data.filter(x => x.number_id !== number_id)
       this.CalculateTotal()

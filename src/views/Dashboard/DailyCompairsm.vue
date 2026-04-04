@@ -48,7 +48,7 @@ const Get = () => {
     dashboardService.GetDailyCompairsm().then((res) => {
         series.value = []
         series.value.push(res.data.series)
-        console.log(res.data.series)
+        //console.log(res.data.series)
         //series.value = res.data.series
         chartOptions.value = {
             ...chartOptions.value,

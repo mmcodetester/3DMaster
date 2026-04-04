@@ -22,7 +22,7 @@
                 <v-row>
                     <v-col cols="3" v-for="item in items">
                         <v-card @click.stop="OpenEntry(item)" :disabled="item.status == 'full' ? true : false"
-                            :color="item.status == 'full' ? 'red darken-2' : 'success'" variant="outlined"
+                            :color="GetColor(item.id)" variant="outlined"
                             class="d-flex align-center">
                             <v-card-text class="text-center">
 
@@ -30,12 +30,12 @@
                                     {{ item.number }}
                                 </p>
 
-                                <v-progress-linear :model-value="(item.avaliable / item.total_amount) * 100"
+                                <!-- <v-progress-linear :model-value="(item.avaliable / item.total_amount) * 100"
                                     :color="item.status == 'full' ? 'pink' : 'success'" height="20" rounded>
                                     <template v-slot:default="{ value }">
                                         <strong class="text-white">{{ Math.ceil(value) }}%</strong>
                                     </template>
-                                </v-progress-linear>
+</v-progress-linear> -->
 
                             </v-card-text>
                         </v-card>
@@ -87,8 +87,8 @@
         </v-card> -->
     </v-col>
     <OrderEntry ref="entryRef" @saved="GetAll" />
-    <SnackbarDialog ref="snackbarRef"/>
-    <UnauthorizeDialog ref="unauthorizeRef"/>
+    <SnackbarDialog ref="snackbarRef" />
+    <UnauthorizeDialog ref="unauthorizeRef" />
 </template>
 <script setup>
 import numberService from '@/services/number.service';
@@ -98,29 +98,43 @@ import orderService from '@/services/order.service';
 import SnackbarDialog from '@/components/SnackbarDialog.vue';
 import UnauthorizeDialog from '@/components/UnauthorizeDialog.vue';
 import constants from '@/utils/constants';
+import { NumberList } from '@/models/number';
+import { useSocketIO } from '@hlf01/vue3-socket.io';
+import VueSocketIO from '@hlf01/vue3-socket.io';
+const io = inject('socket')
 const store = useAppStore()
-const search = ref('01')
+const search = ref('')
 const loading = ref(false)
 const entryRef = ref(null)
 const saveLoading = ref(false)
 const snackbarRef = ref(null)
 const unauthorizeRef = ref(null)
-
+const socket = useSocketIO()
+const { proxy } = getCurrentInstance()
+// const emitter = io(import.meta.env.VITE_SOCKET_URL,{
+//     transports: ['websocket'],
+// })
 const items = ref([])
 const GetAll = () => {
+    SendSocketEvent()
     items.value = []
-    loading.value = true
-    numberService.GetAll(search.value).then((res) => {
-        items.value = res.data
-    }).catch((err) => {
-        if(err.message == constants.UnauthorizeMessage){
-            unauthorizeRef.value.OpenDialog()
-        }else{
-            snackbarRef.value.OpenSnackbar('red darken-2', err.message)
-        }
-    }).finally(() => {
-        loading.value = false
-    })
+    if (search.value) {
+        items.value = NumberList.filter(x => x.number.includes(search.value))
+    } else {
+        items.value = NumberList
+    }
+    // numberService.GetAll(search.value).then((res) => {
+
+    //     items.value = res.data
+    // }).catch((err) => {
+    //     if(err.message == constants.UnauthorizeMessage){
+    //         unauthorizeRef.value.OpenDialog()
+    //     }else{
+    //         snackbarRef.value.OpenSnackbar('red darken-2', err.message)
+    //     }
+    // }).finally(() => {
+    //     loading.value = false
+    // })
 }
 const Save = () => {
     saveLoading.value = true
@@ -134,9 +148,9 @@ const Save = () => {
             store.orderList.data = []
         }
     }).catch((err) => {
-        if(err.message == constants.UnauthorizeMessage){
+        if (err.message == constants.UnauthorizeMessage) {
             unauthorizeRef.value.OpenDialog()
-        }else{
+        } else {
             snackbarRef.value.OpenSnackbar('red darken-2', err.message)
         }
     }).finally(() => {
@@ -146,9 +160,29 @@ const Save = () => {
 const OpenEntry = (data) => {
     entryRef.value.OpenDialog(data)
 }
+const GetColor = (id) =>{
+    let color = 'success'
+   const hasFull =  store.fullOrderList.filter(x=>x.id ==id )[0]
+   if(hasFull){
+        color ='red darken-2'
+   }   
+   return color 
+}
+const SendSocketEvent = () => {
+    io.emit('getfullnumber', "124")
+}
 onMounted(() => {
     store.orderList.data = []
     store.orderList.total = 0
+    // emitter.on("connect", () => {
+    //     console.log("connect")
+    // });
     GetAll()
+    SendSocketEvent()
+    socket.subscribe('fullnumbers', (data) => {
+        console.log(data)
+        store.SetFullOrderList(data)
+    })
+
 })
 </script>

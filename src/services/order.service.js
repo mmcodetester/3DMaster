@@ -25,5 +25,8 @@ class OrderService{
         GetById(id) {
             return api.get("/order/getbyid?id=" + id, { headers: AuthHeader() });
         }
+        GetAvailable(id){
+            return api.get(`/number/getavailable?id=${id}`, {headers: AuthHeader()})
+        }
 }
 export default new OrderService()

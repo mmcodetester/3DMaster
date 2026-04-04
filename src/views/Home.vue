@@ -5,7 +5,7 @@
                 <v-card class="text-center" variant="flat" color="primary" :elevation="10">
                     <v-card-text>
                         <p class=" font-weight-bold text-h6">ယနေ့</p>
-                        <p class="mt-1 font-weight-bold text-subtitle-1">{{ ordertotal.today_total ?? 0 }}</p>
+                        <p class="mt-1 font-weight-bold text-subtitle-1">{{ ordertotal.today_total ?? 0 }} + {{ ordertotal.today_extra_total ?? 0 }} = {{ ordertotal.today_total + ordertotal.today_extra_total }}</p>
                     </v-card-text>
                 </v-card>
             </v-col>
@@ -13,7 +13,7 @@
                 <v-card class="text-center" variant="flat" color="primary" :elevation="10">
                     <v-card-text>
                         <p class=" font-weight-bold text-h6">ယခုအပတ်</p>
-                        <p class="mt-1 font-weight-bold text-subtitle-1">{{ ordertotal.weekly_total ?? 0 }}</p>
+                        <p class="mt-1 font-weight-bold text-subtitle-1">{{ ordertotal.weekly_total ?? 0 }} + {{ ordertotal.extra_total ?? 0 }} = {{ ordertotal.weekly_total  + ordertotal.extra_total  }}</p>
                     </v-card-text>
                 </v-card>
             </v-col>
@@ -57,6 +57,8 @@ const unauthorizeRef = ref(null)
 const ordertotal = ref({
     today_total : 0,
     weekly_total : 0,
+    today_extra_total : 0,
+    extra_total : 0,
     monthly_total : 0,
     yearly_total : 0
 })
@@ -89,9 +91,10 @@ const pagination = ref({
 })
 const GetDetailsTotalAmount = () => {
     weeklyreportService.GetDetailsTotalAmount(pagination.value).then((res) => {
-       ordertotal.value.weekly_total = res.data
+       ordertotal.value.weekly_total = res.data.total
+       ordertotal.value.extra_total = res.data.extra
     }).catch((err) => {
-
+        console.log(err)
     }).finally(() => {
 
     })

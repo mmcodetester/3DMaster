@@ -1,17 +1,16 @@
 <template>
     <v-row>
         <v-col cols="12">
-            <v-card>
+            <v-card class="text-center">
                 <v-card-text>
-                    <v-pie title="Weekly Compairsm" legend reveal :palette="['#048BA8', '#99C24D', '#F18F01']"
+                    <v-pie :size="$vuetify.display.smAndDown ? 300 :378" title="Weekly Compairsm" legend reveal :palette="['#048BA8', '#99C24D', '#F18F01']"
                         :items="items">
                         <template v-slot:legend-text="{ item }">
-                            <div class="d-flex ga-6">
-                                <div>{{ item.title }}</div>
-
-                                <div class="ml-auto font-weight-bold">
-                                    {{ item.value }}
-                                </div>
+                            <div class="d-flex justify-space-between align-center w-full my-1">
+                                <span class="text-primary font-weight-bold">{{ item.title }}</span>
+                                <span class="font-weight-bold ml-2">
+                                    {{ item.value }} + {{ item.raw.extra }} = {{ item.value + (item.raw.extra ?? 0) }}
+                                </span>
                             </div>
                         </template>
                     </v-pie>

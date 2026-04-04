@@ -59,11 +59,14 @@
                 <v-card elevation="2">
                     <v-card-title>
                         <v-row>
-                            <v-col cols="6"><span class="text-subtitle-1 font-weight-bold"> ကော်စားအော်ဒါစာရင်း
+                            <v-col :cols=" $vuetify.display.smAndDown ? 12 : 6" ><span class="text-subtitle-1 font-weight-bold"> ကော်စားအော်ဒါစာရင်း
                                 </span></v-col>
-                            <v-col cols="6" class="text-right"> <span
+                            <v-col :cols=" $vuetify.display.smAndDown ? 12 : 6" :class="$vuetify.display.smAndDown ? 'mt-n6' : 'text-right'"> <span
                                     class="text-subtitle-1 font-weight-bold">စုစုပေါင်း - </span><span
                                     class="text-subtitle-1 text-success font-weight-bold"> {{ total || 0 }}
+                                </span><span
+                                    class="text-subtitle-1 font-weight-bold"> နောက်ထိုး - </span><span
+                                    class="text-subtitle-1 text-success font-weight-bold"> {{ extra || 0 }}
                                 </span></v-col>
                         </v-row>
                     </v-card-title>
@@ -119,6 +122,7 @@ const loading = ref(false)
 const userList = ref([])
 const weeklyList = ref([])
 const total = ref(0)
+const extra = ref(0)
 const selected_id = ref(0)
 const pagination = ref({
     search: {
@@ -137,6 +141,7 @@ const pagination = ref({
 const headers = [
     { title: 'Name', key: 'name', sortable: true },
     { title: 'Total Amount', key: 'total_amount', sortable: true },
+     { title: 'Total Extra', key: 'total_extra', sortable: true },
     { title: 'Year', key: 'year', sortable: false },
     { title: 'Month', key: 'month_name', sortable: false },
     { title: 'From To', key: 'from_to', sortable: true },
@@ -219,7 +224,8 @@ const ExportExcel = () => {
 const GetDetailsTotalAmount = () => {
     weeklyamountperuserService.GetDetailsTotalAmount(pagination.value).then((res) => {
         console.log(res.data)
-        total.value = res.data
+        total.value = res.data.total
+        extra.value = res.data.extra
     }).catch((err) => {
 
     }).finally(() => {

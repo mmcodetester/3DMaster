@@ -60,11 +60,14 @@
                 <v-card elevation="2">
                     <v-card-title>
                         <v-row>
-                            <v-col cols="6"><span class="text-subtitle-1 font-weight-bold"> နေ့စဉ်အော်ဒါစာရင်း(အားလုံး)
+                            <v-col :cols=" $vuetify.display.smAndDown ? 12 : 6" ><span class="text-subtitle-1 font-weight-bold"> နေ့စဉ်အော်ဒါစာရင်း(အားလုံး)
                                 </span></v-col>
-                            <v-col cols="6" class="text-right"> <span
+                            <v-col :cols=" $vuetify.display.smAndDown ? 12 : 6"  :class="$vuetify.display.smAndDown ? 'mt-n6' : 'text-right'"> <span
                                     class="text-subtitle-1 font-weight-bold">စုစုပေါင်း - </span><span
                                     class="text-subtitle-1 text-success font-weight-bold"> {{ total || 0 }}
+                                </span><span
+                                    class="text-subtitle-1 font-weight-bold"> နောက်ထိုး - </span><span
+                                    class="text-subtitle-1 text-success font-weight-bold"> {{ extra || 0 }}
                                 </span></v-col>
                         </v-row>
                     </v-card-title>
@@ -123,6 +126,7 @@ const loading = ref(false)
 const userList = ref([])
 const selected_id = ref(0)
 const total = ref(0)
+const extra = ref(0)
 const pagination = ref({
     search: {
         name: '',
@@ -137,6 +141,7 @@ const pagination = ref({
 const headers = [
     { title: 'Number', key: 'number', sortable: true },
     { title: 'Amount', key: 'amount', sortable: true },
+    { title: 'Extra', key: 'extra', sortable: true },
     { title: 'Month', key: 'month', sortable: true },
     { title: 'From - To', key: 'from_to', sortable: false },
 
@@ -212,7 +217,8 @@ const GetAllData = () => {
 const GetDetailsTotalAmount = () => {
     dailyreportService.GetDetailsTotalAmount(pagination.value).then((res) => {
         console.log(res.data)
-        total.value = res.data
+        total.value = res.data.total
+        extra.value = res.data.extra
     }).catch((err) => {
 
     }).finally(() => {

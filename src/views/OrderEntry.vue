@@ -47,8 +47,26 @@
                         </v-col>
                         <v-col :cols="$vuetify.display.smAndDown ? 12 : 8"
                             :class="$vuetify.display.smAndDown ? 'text-left mt-n2' : 'text-right'">
-                            <v-number-input required :rueles="amountRules(model.avaliable)" :min="1" class="font-weight-bold"
+                            <v-number-input :readonly="!model.avaliable" required :rueles="amountRules(model.avaliable)"  class="font-weight-bold"
                                 :max="model.avaliable" v-model="model.amount" variant="outlined"
+                                density="comfortable"></v-number-input>
+                        </v-col>
+                    </v-row>
+                    <v-row class="mt-n6 justify-end" >
+                        <v-col :cols="$vuetify.display.smAndDown ? 12 : 9" :class="$vuetify.display.smAndDown? '' :'ml-n2 mt-n4'">
+                            <v-checkbox hide-details label="Has Extra" v-model="hasExtra" color="primary"></v-checkbox>
+                        </v-col>
+                    </v-row>
+                    <v-row :class="$vuetify.display.smAndDown ? 'mt-n5' : 'mt-n6'" v-if="hasExtra">
+                        <v-col :cols="$vuetify.display.smAndDown ? 12 : 3"
+                            :class="$vuetify.display.smAndDown ? 'text-left' : 'text-right'">
+                            <p :class="$vuetify.display.smAndDown ? '' : 'mt-3'">Extra Amount <span class="text-red">*</span>
+                            </p>
+                        </v-col>
+                        <v-col :cols="$vuetify.display.smAndDown ? 12 : 8"
+                            :class="$vuetify.display.smAndDown ? 'text-left mt-n2' : 'text-right'">
+                            <v-number-input  class="font-weight-bold" prepend-inner-icon="mdi-close"
+                                v-model="model.extra" variant="outlined"
                                 density="comfortable"></v-number-input>
                         </v-col>
                     </v-row>
@@ -73,7 +91,7 @@ import orderService from '@/services/order.service'
 import { useAppStore } from '@/stores/app'
 import constants from '@/utils/constants'
 const emit = defineEmits(['saved'])
-
+const hasExtra = ref(false)
 const unauthorizeRef = ref(null)
 const snackbarRef = ref(null)
 
@@ -94,16 +112,30 @@ const amountRules = (available) => [
 const dialog = ref(false)
 const model = ref(new Order())
 const OpenDialog = (data) => {
+    model.value.avaliable = null
+    GetAvailable(data.id)
     model.value.number_id = data.id
     model.value.number = data.number
-    model.value.avaliable = data.avaliable
-    model.value.amount = 0
+    //
+    model.value.amount = null
     dialog.value = true
+}
+const GetAvailable = (id) =>{
+    orderService.GetAvailable(id).then((res)=>{
+        model.value.avaliable = res.data
+    }).catch((err)=>{
+
+    }).finally(()=>{
+
+    })
 }
 const Save = () => {
     if (isValid.value) {
         if (model.value.avaliable >= model.value.amount) {
             saveLoading.value = true
+            if(!hasExtra.value){
+                model.value.extra = 0
+            }
             store.orderList.total = model.value.amount
             store.orderList.data = []
             store.orderList.data.push(model.value)
@@ -124,12 +156,13 @@ const Save = () => {
                 }
             }).finally(() => {
                 saveLoading.value = false
-                dialog.value = false
+                CloseDialog()
             })
         }
     }
 }
 const CloseDialog = () => {
+    hasExtra.value = false
     model.value = new Order()
     store.orderList.total = 0
     store.orderList.data = []
