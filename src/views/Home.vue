@@ -13,7 +13,7 @@
                 <v-card class="text-center" variant="flat" color="primary" :elevation="10">
                     <v-card-text>
                         <p class=" font-weight-bold text-h6">ယခုအပတ်</p>
-                        <p class="mt-1 font-weight-bold text-subtitle-1">{{ ordertotal.weekly_total ?? 0 }} + {{ ordertotal.extra_total ?? 0 }} = {{ ordertotal.weekly_total  + ordertotal.extra_total  }}</p>
+                        <p class="mt-1 font-weight-bold text-subtitle-1">{{ ordertotal.weekly_total ?? 0 }} + {{ ordertotal.extra_total ?? 0 }} = {{ (ordertotal.weekly_total  + ordertotal.extra_total) ??0 }} </p>
                     </v-card-text>
                 </v-card>
             </v-col>

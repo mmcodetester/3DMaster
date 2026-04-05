@@ -97,6 +97,7 @@ const confirmRef = ref(null)
 const loading = ref(false)
 const selected_id = ref(0)
 const monthList = ref([])
+const io = inject('socket')
 const activeAmount = ref({
     hasActiveAmount: false,
     id: null
@@ -175,6 +176,9 @@ const ChangeStatus = (res) => {
             const color = res.data.success ? 'success' : 'red darken-2'
             const message = res.data.messages[0]
             snackbarRef.value.OpenSnackbar(color, message)
+            if(res.data.succss){
+                io.emit('getfullnumber',"123")
+            }
         }).catch((err) => {
 
         }).finally(() => {

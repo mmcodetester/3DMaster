@@ -1,9 +1,8 @@
 import api from "../api";
 import AuthHeader from "../auth.header";
 
-class WeeklyReportService {
+class OtherOrderService {
     GetAll(param) {
-        console.log(param)
         const config = {
             headers: AuthHeader(),
             params: {
@@ -14,12 +13,11 @@ class WeeklyReportService {
                 length: param.itemsPerPage,
                 name: param.search.name ? param.search.name : '',
                 date: param.search.date,
-                created_by: param.search.user_id,
-                number: param.search.number,
-                monthly_amount_id : param.search.monthly_amount_id
+                monthly_amount_id: param.search.monthly_amount_id,
+                number: param.search.number
             },
         };
-        return api.get('/weeklyreport', config)
+        return api.get('/otherorder', config)
     }
     ExportExcel(param) {
         const config = {
@@ -33,26 +31,25 @@ class WeeklyReportService {
                 length: param.itemsPerPage,
                 name: param.search.name ? param.search.name : '',
                 date: param.search.date,
-                created_by: param.search.user_id,
-                number: param.search.number,
-                monthly_amount_id : param.search.monthly_amount_id
+                monthly_amount_id: param.search.monthly_amount_id,
+                number: param.search.number
             },
             responseType: 'blob'
         };
-        return api.get('/weeklyreport/export-excel', config)
+        return api.get('/otherorder/export-excel', config)
     }
-    GetDetailsTotalAmount(param){
+    GetTotal(param){
         const config = {
             headers: AuthHeader(),
             params: {
                 name: param.search.name ?? '',
                 date: param.search.date,
-                created_by: param.search.user_id,
-                number: param.search.number,
-                monthly_amount_id : param.search.monthly_amount_id
+                monthly_amount_id: param.search.id,
+                number: param.search.number
             },
         };
-        return api.get('/weeklyreport/gettotal',config)
+        return api.get('/otherorder/gettotal',config)
     }
 }
-export default new WeeklyReportService()
+
+export default new OtherOrderService()

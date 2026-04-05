@@ -33,10 +33,10 @@
                                     :class="$vuetify.display.mdAndUp ? `text-right` : `text-left mb-n4`">
                                     <p class="text-body-2 mt-3">နံပါတ်</p>
                                 </v-col>
-                                <v-col cols="12" md="4" align-self="center"
-                                    :class="$vuetify.display.mdAndUp ? `mb-0` : `mb-n0`">
-                                    <v-text-field type="text" v-model="pagination.search.number" density="compact"
-                                        variant="outlined" />
+                               <v-col cols="12" md="4">
+                                    <v-text-field
+                                        v-model="pagination.search.number" density="compact"
+                                        variant="outlined"></v-text-field>
                                 </v-col>
                                
                                 <v-col cols="12" md="6"
@@ -44,9 +44,9 @@
                                     <v-btn size="small" color="red darken-2" @click.stop="Reset"
                                         class="mr-2">Reset</v-btn>
                                     <v-btn size="small" color="success" class="mr-2" @click.stop="GetAllData">Search</v-btn>
-                                    <v-btn size="small" :loading="excelLoading" @click.stop="ExportExcel"
+                                    <!-- <v-btn size="small" :loading="excelLoading" @click.stop="ExportExcel"
                                         color="success" class="mr-0" variant="outlined"
-                                        append-icon="mdi-file-excel">Export Excel</v-btn>
+                                        append-icon="mdi-file-excel">Export Excel</v-btn> -->
                                 </v-col>
                             </v-row>
                         </v-expansion-panel-text>
@@ -59,14 +59,11 @@
                 <v-card elevation="2">
                     <v-card-title>
                         <v-row>
-                            <v-col :cols=" $vuetify.display.smAndDown ? 12 : 6" ><span class="text-subtitle-1 font-weight-bold"> အပတ်စဉ်အော်ဒါစာရင်း
+                            <v-col :cols=" $vuetify.display.smAndDown ? 12 : 6" ><span class="text-subtitle-1 font-weight-bold"> ဒိုင်ကြီးထံတင်မည့်စာရင်း
                                 </span></v-col>
-                            <v-col :cols=" $vuetify.display.smAndDown ? 12 : 6"  :class="$vuetify.display.smAndDown ? 'mt-n6' : 'text-right'"> <span
+                            <v-col :cols=" $vuetify.display.smAndDown ? 12 : 6" :class="$vuetify.display.smAndDown ? 'mt-n6' : 'text-right'"> <span
                                     class="text-subtitle-1 font-weight-bold">စုစုပေါင်း - </span><span
-                                    class="text-subtitle-1 text-success font-weight-bold"> {{ total || 0 }} 
-                                </span><span
-                                    class="text-subtitle-1 font-weight-bold"> နောက်ထိုး - </span><span
-                                    class="text-subtitle-1 text-success font-weight-bold"> {{ extra || 0 }} 
+                                    class="text-subtitle-1 text-success font-weight-bold"> {{ total || 0 }}
                                 </span></v-col>
                         </v-row>
                     </v-card-title>
@@ -77,7 +74,7 @@
                                 :fixed-header="true" :fixed-footer="true" search="name" @update:options="GetAllData"
                                 :items="items" :headers="headers" :must-sort="true" :items-length="recordTotal"
                                 :loading="loading" item-key="id" v-model:sort-by="pagination.sortBy"
-                                v-model:page="pagination.page"  v-model:items-per-page="pagination.itemsPerPage"
+                                v-model:page="pagination.page" :items-per-page="pagination.itemsPerPage"
                                 initial-sort-order="desc">
 
                             </v-data-table-server>
@@ -108,6 +105,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import moment from 'moment';
 import dropdownService from '@/services/dropdown.service';
 import weeklyreportService from '@/services/report/weeklyreport.service';
+import otherorderService from '@/services/report/otherorder.service';
 
 const dateStr = ref('')
 
@@ -127,7 +125,6 @@ const pagination = ref({
     search: {
         name: '',
         role_id: null,
-        user_id: null,
         year : new Date().getFullYear(),
         monthly_amount_id : null,
         number: null,
@@ -140,7 +137,7 @@ const pagination = ref({
 const headers = [
     { title: 'Number', key: 'number', sortable: true },
     { title: 'Total Amount', key: 'total_amount', sortable: true },
-     { title: 'Total Extra', key: 'total_extra', sortable: true },
+    //  { title: 'Total Extra', key: 'total_extra', sortable: true },
     { title: 'Year', key: 'year', sortable: false },
     { title: 'Month', key: 'month_name', sortable: false },
     { title: 'From To', key: 'from_to', sortable: true },
@@ -153,7 +150,7 @@ const GetAllData =() =>{
 }
 const GetAll = () => {
     loading.value = true
-    weeklyreportService.GetAll(pagination.value).then((res) => {
+    otherorderService.GetAll(pagination.value).then((res) => {
         console.log(res)
         items.value = res.data.data
         recordTotal.value = res.data.total
@@ -186,41 +183,42 @@ const Reset = () => {
     pagination.value.search.monthly_amount_id = null
     GetAllData()
 }
-const ExportExcel = () => {
-    excelLoading.value = true
-    weeklyreportService.ExportExcel(pagination.value)
-        .then((res) => {
-            if (res) {
-                const blob = new Blob([res.data], {
-                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                })
+// const ExportExcel = () => {
+//     excelLoading.value = true
 
-                const url = window.URL.createObjectURL(blob)
-                const a = document.createElement("a")
-                a.href = url
+//     weeklyamountperuserService.ExportExcel(pagination.value)
+//         .then((res) => {
+//             if (res) {
+//                 const blob = new Blob([res.data], {
+//                     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+//                 })
 
-                const date = moment().format("DD-MM-YYYY_HH-mm")
-                a.download = `detail_report_${date}.xlsx`
+//                 const url = window.URL.createObjectURL(blob)
+//                 const a = document.createElement("a")
+//                 a.href = url
 
-                document.body.appendChild(a)
-                a.click()
-                a.remove()
-                window.URL.revokeObjectURL(url)
-            }
-        })
-        .catch((err) => {
-            if (err.message == constants.UnauthorizeMessage) {
-                unauthorizeRef.value.OpenDialog()
-            } else {
-                snackbarRef.value.OpenSnackbar('red darken-2', err.message)
-            }
-        })
-        .finally(() => {
-            excelLoading.value = false
-        })
-}
+//                 const date = moment().format("DD-MM-YYYY_HH-mm")
+//                 a.download = `detail_report_${date}.xlsx`
+
+//                 document.body.appendChild(a)
+//                 a.click()
+//                 a.remove()
+//                 window.URL.revokeObjectURL(url)
+//             }
+//         })
+//         .catch((err) => {
+//             if (err.message == constants.UnauthorizeMessage) {
+//                 unauthorizeRef.value.OpenDialog()
+//             } else {
+//                 snackbarRef.value.OpenSnackbar('red darken-2', err.message)
+//             }
+//         })
+//         .finally(() => {
+//             excelLoading.value = false
+//         })
+// }
 const GetDetailsTotalAmount = () => {
-    weeklyreportService.GetDetailsTotalAmount(pagination.value).then((res) => {
+    otherorderService.GetTotal(pagination.value).then((res) => {
         console.log(res.data)
         total.value = res.data.total
         extra.value = res.data.extra
@@ -238,8 +236,7 @@ watch(()=>pagination.value.search.year,(newVal)=>{
 const GetWeeklyAmountList = (year) =>{
     dropdownService.GetWeeklyAmountList(year).then((res)=>{
         weeklyList.value = res.data
-        const filter = res.data.filter(x=>x.id == pagination.value.search.monthly_amount_id)
-        if(!filter){
+        if(pagination.value.search.monthly_amount_id){
             pagination.value.search.monthly_amount_id = null
         }
     }).catch((err)=>{
@@ -263,9 +260,22 @@ const GetInitialWeeklyAmountList = (year) =>{
 
     })
 }
+const GetUserList = () =>{
+    dropdownService.GetUserList().then((res)=>{
+        userList.value = res.data
+    }).catch((err)=>{
+        if(err.message == constants.UnauthorizeMessage){
+            unauthorizeRef.value.OpenDialog()
+        }else{
+            snackbarRef.value.OpenSnackbar('red darken-2', err.message)
+        }
+    }).finally(()=>{
+
+    })
+}
 onMounted(() => {
     pagination.value.search.year = new Date().getFullYear()
     GetInitialWeeklyAmountList(pagination.value.search.year)
-   
+   // GetUserList()
 })
 </script>

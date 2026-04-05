@@ -52,15 +52,10 @@
                                 density="comfortable"></v-number-input>
                         </v-col>
                     </v-row>
-                    <v-row class="mt-n6 justify-end" >
-                        <v-col :cols="$vuetify.display.smAndDown ? 12 : 9" :class="$vuetify.display.smAndDown? '' :'ml-n2 mt-n4'">
-                            <v-checkbox hide-details label="Has Extra" v-model="hasExtra" color="primary"></v-checkbox>
-                        </v-col>
-                    </v-row>
-                    <v-row :class="$vuetify.display.smAndDown ? 'mt-n5' : 'mt-n6'" v-if="hasExtra">
+                    <v-row :class="$vuetify.display.smAndDown ? 'mt-n3' : ''">
                         <v-col :cols="$vuetify.display.smAndDown ? 12 : 3"
                             :class="$vuetify.display.smAndDown ? 'text-left' : 'text-right'">
-                            <p :class="$vuetify.display.smAndDown ? '' : 'mt-3'">Extra Amount <span class="text-red">*</span>
+                            <p :class="$vuetify.display.smAndDown ? '' : 'mt-3'">Extra Amount 
                             </p>
                         </v-col>
                         <v-col :cols="$vuetify.display.smAndDown ? 12 : 8"
@@ -91,7 +86,7 @@ import orderService from '@/services/order.service'
 import { useAppStore } from '@/stores/app'
 import constants from '@/utils/constants'
 const emit = defineEmits(['saved'])
-const hasExtra = ref(false)
+const hasExtra = ref(true)
 const unauthorizeRef = ref(null)
 const snackbarRef = ref(null)
 

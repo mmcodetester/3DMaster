@@ -12,7 +12,7 @@
 <script setup>
 import { ref } from 'vue';
 var snackbar = ref(false)
-var timeout = ref(3000)
+var timeout = ref(1000)
 var text = ref('')
 var color = ref('')
 

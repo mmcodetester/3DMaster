@@ -86,6 +86,7 @@ const items = ref([
       { id: 7, title: 'နေ့စဉ်အော်ဒါစာရင်း(ဂဏန်းဖြင့်)', url: '/daily-report', icon: 'mdi-chevron-right' },
       { id: 8, title: 'အပတ်စဉ်အော်ဒါစာရင်း', url: '/weekly-report', icon: 'mdi-chevron-right' },
       { id: 8, title: 'ကော်စားအော်ဒါစာရင်း', url: '/weekly-per-user-report', icon: 'mdi-chevron-right' },
+      { id: 9, title: 'ဒိုင်ကြီးထံတင်မည့်စာရင်း', url: '/other-order-report', icon: 'mdi-chevron-right' },
     ]
   },
 ])

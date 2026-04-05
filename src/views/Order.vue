@@ -3,16 +3,17 @@
         <v-card elevation="10">
             <v-card-text class="mb-3">
 
-                <v-row>
+                <v-row class="mt-7">
+                    <v-col :cols="$vuetify.display.smAndDown ? 12 : 3"
+                        :class="$vuetify.display.smAndDown ? 'mt-n3' : ''">
+                        <v-btn @click.stop="BaulkCreateOpenEntry" class="mr-1" block size="large" color="primary"
+                            prepend-icon="mdi-database">အစုလိုက်စာရင်းသွင်းခြင်း</v-btn>
+                    </v-col>
                     <v-col :cols="$vuetify.display.smAndDown ? 12 : 9">
                         <v-text-field v-model="search" clearable density="comfortable"
                             variant="outlined"></v-text-field>
                     </v-col>
-                    <v-col :cols="$vuetify.display.smAndDown ? 12 : 3"
-                        :class="$vuetify.display.smAndDown ? 'mt-n3' : ''">
-                        <v-btn :loading="loading" @click.stop="GetAll" class="mr-1" block size="large" color="success"
-                            prepend-icon="mdi-magnify">Search</v-btn>
-                    </v-col>
+
                 </v-row>
                 <v-row no-gutters :class="$vuetify.display.smAndDown ? 'mt-4' : ''">
                     <v-col cols="12">
@@ -21,9 +22,8 @@
                 </v-row>
                 <v-row>
                     <v-col cols="3" v-for="item in items">
-                        <v-card @click.stop="OpenEntry(item)" :disabled="item.status == 'full' ? true : false"
-                            :color="GetColor(item.id)" variant="outlined"
-                            class="d-flex align-center">
+                        <v-card @click.stop="OpenEntry(item)" :disabled="GetDisabled(item.id)"
+                            :color="GetColor(item.id)" variant="outlined" class="d-flex align-center">
                             <v-card-text class="text-center">
 
                                 <p class="font-weight-bold text-subtitle-1 mr-2">
@@ -86,12 +86,14 @@
             </v-card-text>
         </v-card> -->
     </v-col>
-    <OrderEntry ref="entryRef" @saved="GetAll" />
+    <OrderEntry ref="entryRef" @saved="GetAllAfterSave" />
     <SnackbarDialog ref="snackbarRef" />
     <UnauthorizeDialog ref="unauthorizeRef" />
+    <BaulkInsert ref="baulkInsertRef" @saved="GetAllAfterSave" />
 </template>
 <script setup>
 import numberService from '@/services/number.service';
+import BaulkInsert from './BaulkInsert.vue';
 import OrderEntry from './OrderEntry.vue';
 import { useAppStore } from '@/stores/app';
 import orderService from '@/services/order.service';
@@ -106,6 +108,7 @@ const store = useAppStore()
 const search = ref('')
 const loading = ref(false)
 const entryRef = ref(null)
+const baulkInsertRef = ref(null)
 const saveLoading = ref(false)
 const snackbarRef = ref(null)
 const unauthorizeRef = ref(null)
@@ -115,8 +118,19 @@ const { proxy } = getCurrentInstance()
 //     transports: ['websocket'],
 // })
 const items = ref([])
-const GetAll = () => {
+const GetAllAfterSave = () => {
     SendSocketEvent()
+    items.value = []
+    if (search.value) {
+        items.value = NumberList.filter(x => x.number.includes(search.value))
+    } else {
+        items.value = NumberList
+    }
+}
+const BaulkCreateOpenEntry = () => {
+    baulkInsertRef.value.OpenDialog()
+}
+const GetAll = () => {
     items.value = []
     if (search.value) {
         items.value = NumberList.filter(x => x.number.includes(search.value))
@@ -157,32 +171,49 @@ const Save = () => {
         saveLoading.value = false
     })
 }
+watch(() => search.value, (newVal) => {
+    GetAll()
+})
 const OpenEntry = (data) => {
     entryRef.value.OpenDialog(data)
 }
-const GetColor = (id) =>{
+const GetColor = (id) => {
     let color = 'success'
-   const hasFull =  store.fullOrderList.filter(x=>x.id ==id )[0]
-   if(hasFull){
-        color ='red darken-2'
-   }   
-   return color 
+    const hasFull = store.fullOrderList.filter(x => x.id == id)[0]
+    if (hasFull) {
+        color = 'red darken-2'
+    }
+    return color
+}
+const GetDisabled = (id) => {
+    let disable = false
+    const hasFull = store.fullOrderList.filter(x => x.id == id)[0]
+    if (hasFull) {
+        disable = true
+    }
+    return disable
 }
 const SendSocketEvent = () => {
     io.emit('getfullnumber', "124")
 }
+// watch(()=> store.fullOrderList.length, (newVal)=>{
+//     if(newVal){
+//       GetAll()
+//     }
+// })
 onMounted(() => {
     store.orderList.data = []
     store.orderList.total = 0
-    // emitter.on("connect", () => {
-    //     console.log("connect")
-    // });
     GetAll()
-    //SendSocketEvent()
+    store.fullOrderList = []
+    SendSocketEvent()
     socket.subscribe('fullnumbers', (data) => {
-        console.log(data)
+        store.fullOrderList = []
+        if (data) {
+            store.SetFullOrderList(data)
+        }
         store.SetFullOrderList(data)
+        GetAll()
     })
-
 })
 </script>

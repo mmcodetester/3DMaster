@@ -12,6 +12,7 @@ import DefaultLayout from './layouts/DefaultLayout.vue'
 import LoginLayout from './layouts/LoginLayout.vue'
 import { useAppStore } from './stores/app'
 const {proxy} = getCurrentInstance()
+const io = inject('socket')
 const store = useAppStore()
 const socket = useSocketIO()
 const route = useRoute()
@@ -25,10 +26,15 @@ const layoutComponent = computed(() => {
       return DefaultLayout
   }
 })
+
 onMounted(()=>{
-  socket.subscribe('fullnumbers',(data)=>{
-    store.SetFullOrderList(data)
-  })
-  proxy.$socket.emit('getfullnumber', {text:'Give me some full data'})
+   socket.subscribe('fullnumbers', (data) => {
+        store.fullOrderList = []
+        if(data){
+          store.SetFullOrderList(data)
+        }
+        
+      })
+  io.emit('getfullnumber',"123")
 })
 </script>

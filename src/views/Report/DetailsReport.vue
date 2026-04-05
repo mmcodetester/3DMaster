@@ -78,7 +78,7 @@
                                 :fixed-header="true" :fixed-footer="true" search="name" @update:options="GetAllData"
                                 :items="items" :headers="headers" :must-sort="true" :items-length="recordTotal"
                                 :loading="loading" item-key="id" v-model:sort-by="pagination.sortBy"
-                                v-model:page="pagination.page" :items-per-page="pagination.itemsPerPage"
+                                v-model:page="pagination.page"  v-model:items-per-page="pagination.itemsPerPage"
                                 initial-sort-order="desc">
                                 <template v-slot:['item.actions']="{ item }">
                                     <v-btn rounded="lg" color="red-darken-2" class="ml-2" size="small"
@@ -127,6 +127,7 @@ const userList = ref([])
 const selected_id = ref(0)
 const total = ref(0)
 const extra = ref(0)
+ const io = inject('socket')
 const pagination = ref({
     search: {
         name: '',
@@ -188,6 +189,7 @@ const Delete = (val) => {
             const message = res.data.messages[0]
             if (res.data.success) {
                 GetAllData()
+               io.emit('getfullnumber',"123")
             }
             snackbarRef.value.OpenSnackbar(color, message)
         }).catch((err) => {

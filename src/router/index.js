@@ -11,6 +11,7 @@ import MonthlyAmount from '@/views/MonthlyAmount.vue'
 import Order from '@/views/Order.vue'
 import DailyReport from '@/views/Report/DailyReport.vue'
 import DetailsReport from '@/views/Report/DetailsReport.vue'
+import OtherOrderReport from '@/views/Report/OtherOrderReport.vue'
 import WeeklyReport from '@/views/Report/WeeklyReport.vue'
 import WeeklyReportPerUser from '@/views/Report/WeeklyReportPerUser.vue'
 import UserList from '@/views/User/UserList.vue'
@@ -85,6 +86,14 @@ const routes = [
     path:'/weekly-per-user-report',
     name:'WeeklyReportPerUser',
     component: WeeklyReportPerUser,
+    meta:{
+      layout:'default-layout'
+    }
+  },
+  {
+    path:'/other-order-report',
+    name:'OtherOrderReport',
+    component: OtherOrderReport,
     meta:{
       layout:'default-layout'
     }

@@ -24,8 +24,7 @@ class DailyReportService {
             headers: AuthHeader(),
             params: {
                 draw: 1,
-
-                sortBy: param.sortBy[0] ? param.sortBy[0].key : 'id',
+                sortBy: param.sortBy[0] ? param.sortBy[0].key : 'number',
                 sortOrder: param.sortBy[0] ? param.sortBy[0].order : 'desc',
                 page: param.page,
                 length: param.itemsPerPage,
@@ -43,8 +42,7 @@ class DailyReportService {
             headers: AuthHeader(),
             params: {
                 draw: 1,
-
-                sortBy: param.sortBy[0] ? param.sortBy[0].key : 'id',
+                sortBy: param.sortBy[0] ? param.sortBy[0].key : 'number',
                 sortOrder: param.sortBy[0] ? param.sortBy[0].order : 'desc',
                 page: param.page,
                 length: param.itemsPerPage,
@@ -73,10 +71,9 @@ class DailyReportService {
             headers: AuthHeader(),
             params: {
                 draw: 1,
-
                 sortBy: param.sortBy[0] ? param.sortBy[0].key : 'id',
                 sortOrder: param.sortBy[0] ? param.sortBy[0].order : 'desc',
-                page: param.page,
+                start: param.page == 1 ? 0 : param.page,
                 length: param.itemsPerPage,
                 name: param.search.name ? param.search.name : '',
                 date: param.search.date,

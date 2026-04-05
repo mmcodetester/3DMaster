@@ -19,6 +19,9 @@ class OrderService{
         Save(data) {
             return api.post("/order", data, { headers: AuthHeader() });
         }
+         BaulkSave(data) {
+            return api.post("/order/baulksave", data, { headers: AuthHeader() });
+        }
         Delete(id) {
             return api.delete("/order/delete?id=" + id, { headers: AuthHeader() });
         }
