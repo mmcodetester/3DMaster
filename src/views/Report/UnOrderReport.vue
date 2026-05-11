@@ -15,7 +15,7 @@
                                 <v-col cols="12" md="4" align-self="center"
                                     :class="$vuetify.display.mdAndUp ? `mb-0` : `mb-n0`">
                                     <v-number-input type="text" density="compact" v-model="pagination.search.year"
-                                        variant="outlined"/>
+                                        variant="outlined" />
                                 </v-col>
                                 <v-col cols="12" md="2"
                                     :class="$vuetify.display.mdAndUp ? `text-right` : `text-left mb-n4`">
@@ -29,21 +29,21 @@
 
                             </v-row>
                             <v-row class="mt-n4">
-                                 <v-col cols="12" md="2"
+                                <v-col cols="12" md="2"
                                     :class="$vuetify.display.mdAndUp ? `text-right` : `text-left mb-n4`">
                                     <p class="text-body-2 mt-3">နံပါတ်</p>
                                 </v-col>
-                               <v-col cols="12" md="4">
-                                    <v-text-field
-                                        v-model="pagination.search.number" density="compact"
+                                <v-col cols="12" md="4">
+                                    <v-text-field v-model="pagination.search.number" density="compact"
                                         variant="outlined"></v-text-field>
                                 </v-col>
-                               
+
                                 <v-col cols="12" md="6"
                                     :class="$vuetify.display.mdAndUp ? `text-right mt-3` : `text-right mt-n4`">
                                     <v-btn size="small" color="red darken-2" @click.stop="Reset"
                                         class="mr-2">Reset</v-btn>
-                                    <v-btn size="small" color="success" class="mr-2" @click.stop="GetAllData">Search</v-btn>
+                                    <v-btn size="small" color="success" class="mr-2"
+                                        @click.stop="GetAllData">Search</v-btn>
                                     <!-- <v-btn size="small" :loading="excelLoading" @click.stop="ExportExcel"
                                         color="success" class="mr-0" variant="outlined"
                                         append-icon="mdi-file-excel">Export Excel</v-btn> -->
@@ -59,12 +59,10 @@
                 <v-card elevation="2">
                     <v-card-title>
                         <v-row>
-                            <v-col :cols=" $vuetify.display.smAndDown ? 12 : 6" ><span class="text-subtitle-1 font-weight-bold"> ဒိုင်ကြီးထံထားသောစာရင်း
+                            <v-col :cols="$vuetify.display.smAndDown ? 12 : 6"><span
+                                    class="text-subtitle-1 font-weight-bold"> ဒိုင်ကြီးထံမတင်ရသေးသောစာရင်း
                                 </span></v-col>
-                            <v-col :cols=" $vuetify.display.smAndDown ? 12 : 6" :class="$vuetify.display.smAndDown ? 'mt-n6' : 'text-right'"> <span
-                                    class="text-subtitle-1 font-weight-bold">စုစုပေါင်း - </span><span
-                                    class="text-subtitle-1 text-success font-weight-bold"> {{ total || 0 }}
-                                </span></v-col>
+
                         </v-row>
                     </v-card-title>
                     <v-divider></v-divider>
@@ -76,7 +74,14 @@
                                 :loading="loading" item-key="id" v-model:sort-by="pagination.sortBy"
                                 v-model:page="pagination.page" :items-per-page="pagination.itemsPerPage"
                                 initial-sort-order="desc">
+                                <template v-slot:['item.actions']="{ item }">
 
+                                    <v-btn rounded="lg" color="success" class="ml-2" size="small"
+                                        variant="outlined" prepend-icon="mdi-check-circle-outline"
+                                        @click.stop="Edit(item.id)">ဒိုင်ကြီးတင်မည်</v-btn>
+                                   
+
+                                </template>
                             </v-data-table-server>
                         </v-col>
                     </v-card-text>
@@ -94,6 +99,7 @@
         </v-dialog>
         <UnauthorizeDialog ref="unauthorizeRef" />
         <SnackbarDialog ref="snackbarRef" />
+        <ConfirmDialog ref="confirmRef" @confirm="Confirm"/>
     </v-col>
 </template>
 <script setup>
@@ -106,6 +112,7 @@ import moment from 'moment';
 import dropdownService from '@/services/dropdown.service';
 import weeklyreportService from '@/services/report/weeklyreport.service';
 import otherorderService from '@/services/report/otherorder.service';
+
 
 const dateStr = ref('')
 
@@ -125,8 +132,8 @@ const pagination = ref({
     search: {
         name: '',
         role_id: null,
-        year : new Date().getFullYear(),
-        monthly_amount_id : null,
+        year: new Date().getFullYear(),
+        monthly_amount_id: null,
         number: null,
         date: new Date()
     },
@@ -135,22 +142,48 @@ const pagination = ref({
     sortBy: [{ key: "number", order: "desc" }],
 })
 const headers = [
+    { title: 'Actions', key: 'actions', sortable: true },
     { title: 'Number', key: 'number', sortable: true },
     { title: 'Total Amount', key: 'total_amount', sortable: true },
-    //  { title: 'Total Extra', key: 'total_extra', sortable: true },
+    { title: 'User', key: 'username', sortable: true },
     { title: 'Year', key: 'year', sortable: false },
     { title: 'Month', key: 'month_name', sortable: false },
     { title: 'From To', key: 'from_to', sortable: true },
 ];
 const recordTotal = ref(0);
 const items = ref([]);
-const GetAllData =() =>{
-    GetDetailsTotalAmount()
+const GetAllData = () => {
+   // GetDetailsTotalAmount()
     GetAll()
+}
+const Confirm =(val) =>{
+    if(val){
+        
+        if(selected_id.value >0){
+            loading.value = true
+            otherorderService.ConfirmOrder(selected_id.value).then((res)=>{
+                const color = res.data.success ? 'success' :'red darken-2'
+                const message = res.data.messages[0]
+                snackbarRef.value.OpenSnackbar(color, message)
+            }).catch((err)=>{
+                snackbarRef.value.OpenSnackbar('red darken-2', err.message)
+            }).finally(()=>{
+                loading.value = false
+                GetAllData()
+                selected_id.value = 0
+            })
+        }
+    }else{
+        selected_id.value = 0
+    }
+}
+const Edit = (id) =>{
+    selected_id.value=id
+    confirmRef.value.OpenDialog('ဒိုင်ကြီးထံတင်ရန်','ဒိုင်ကြီးထံတင်မည်သေချာပါသလား?')
 }
 const GetAll = () => {
     loading.value = true
-    otherorderService.GetAll(pagination.value).then((res) => {
+    otherorderService.GetAllUnOrder(pagination.value).then((res) => {
         console.log(res)
         items.value = res.data.data
         recordTotal.value = res.data.total
@@ -228,54 +261,54 @@ const GetDetailsTotalAmount = () => {
 
     })
 }
-watch(()=>pagination.value.search.year,(newVal)=>{
-    if(newVal){
+watch(() => pagination.value.search.year, (newVal) => {
+    if (newVal) {
         GetWeeklyAmountList(newVal)
     }
 })
-const GetWeeklyAmountList = (year) =>{
-    dropdownService.GetWeeklyAmountList(year).then((res)=>{
+const GetWeeklyAmountList = (year) => {
+    dropdownService.GetWeeklyAmountList(year).then((res) => {
         weeklyList.value = res.data
-        if(pagination.value.search.monthly_amount_id){
+        if (pagination.value.search.monthly_amount_id) {
             pagination.value.search.monthly_amount_id = null
         }
-    }).catch((err)=>{
+    }).catch((err) => {
 
-    }).finally(()=>{
+    }).finally(() => {
 
     })
 }
-const GetInitialWeeklyAmountList = (year) =>{
-    dropdownService.GetWeeklyAmountList(year).then((res)=>{
+const GetInitialWeeklyAmountList = (year) => {
+    dropdownService.GetWeeklyAmountList(year).then((res) => {
         weeklyList.value = res.data
-        
-        const filter = res.data.filter(x=>x.status)[0]
-        if(filter){
+
+        const filter = res.data.filter(x => x.status)[0]
+        if (filter) {
             console.log('initital')
             pagination.value.search.monthly_amount_id = filter.id
         }
-    }).catch((err)=>{
+    }).catch((err) => {
 
-    }).finally(()=>{
+    }).finally(() => {
 
     })
 }
-const GetUserList = () =>{
-    dropdownService.GetUserList().then((res)=>{
+const GetUserList = () => {
+    dropdownService.GetUserList().then((res) => {
         userList.value = res.data
-    }).catch((err)=>{
-        if(err.message == constants.UnauthorizeMessage){
+    }).catch((err) => {
+        if (err.message == constants.UnauthorizeMessage) {
             unauthorizeRef.value.OpenDialog()
-        }else{
+        } else {
             snackbarRef.value.OpenSnackbar('red darken-2', err.message)
         }
-    }).finally(()=>{
+    }).finally(() => {
 
     })
 }
 onMounted(() => {
     pagination.value.search.year = new Date().getFullYear()
     GetInitialWeeklyAmountList(pagination.value.search.year)
-   // GetUserList()
+    // GetUserList()
 })
 </script>
