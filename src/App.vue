@@ -1,6 +1,7 @@
 <template>
   <v-app>
     <component :is="layoutComponent" :key="layoutKey">
+      
       <router-view />
     </component>
   </v-app>

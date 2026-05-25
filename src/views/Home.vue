@@ -52,7 +52,9 @@ import DailyCompairsm from './Dashboard/DailyCompairsm.vue';
 import MonthlyCompairsm from './Dashboard/MonthlyCompairsm.vue';
 import weeklyreportService from '@/services/report/weeklyreport.service';
 import WeeklyCompairsm from './Dashboard/WeeklyCompairsm.vue';
+import { useRouter } from 'vuetify/lib/composables/router.mjs';
 const snackbarRef = ref(null)
+const router = useRouter()
 const unauthorizeRef = ref(null)
 const ordertotal = ref({
     today_total : 0,
@@ -99,8 +101,14 @@ const GetDetailsTotalAmount = () => {
 
     })
 }
+const CheckLogin = () =>{
+    let user=JSON.parse(localStorage.getItem('2duser'));
+    if(!user){
+        router.push({name:'Login'})
+    }
+}
 onMounted(()=>{
-   
+   CheckLogin()
     OrderTotal()
     
 })
