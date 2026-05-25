@@ -68,7 +68,7 @@
                                         variant="outlined" prepend-icon="mdi-square-edit-outline"
                                         @click.stop="OpenEntry(item.id)">Edit</v-btn>
                                     <v-btn rounded="lg" color="red-darken-2" class="ml-2" size="small"
-                                        variant="outlined" prepend-icon="mdi-trash-can-outline">Delete</v-btn>
+                                        variant="outlined" @click.stop="Delete(item.id)" prepend-icon="mdi-trash-can-outline">Delete</v-btn>
                                 </template>
                             </v-data-table-server>
                         </v-col>
@@ -81,6 +81,7 @@
     <UnauthorizeDialog ref="unauthorizeRef" />
     <SnackbarDialog ref="snackbarRef" />
     <ConfirmDialog ref="confirmRef" @confirm="ChangeStatus" />
+    <ConfirmDialog ref="deleteRef" @confirm="ConfirmDelete"/>
 </template>
 <script setup>
 import MonthlyAmountEntry from './MonthlyAmountEntry.vue';
@@ -94,6 +95,7 @@ const entryRef = ref(null)
 const unauthorizeRef = ref(null)
 const snackbarRef = ref(null)
 const confirmRef = ref(null)
+const deleteRef = ref(null)
 const loading = ref(false)
 const selected_id = ref(0)
 const monthList = ref([])
@@ -163,6 +165,8 @@ const GetMonthList = () =>{
     })
 }
 const Delete = (id) => {
+    selected_id.value = id
+    deleteRef.value.OpenDialog('Delete Alert', 'Are you sure to delete this record?')
 
 }
 
@@ -191,8 +195,27 @@ const ChangeStatus = (res) => {
     }
 
 }
-const ConfirmDelete = (id) => {
-
+const ConfirmDelete = (val) => {
+    if(val){
+        service.Delete(selected_id.value).then((res)=>{
+            const color = res.data.success ? 'success' : 'red darken-2'
+            const message = res.data.messages[0]
+            snackbarRef.value.OpenSnackbar(color, message)
+            if(res.data.success){
+                GetAll()
+            }
+        }).catch((err)=>{
+            if(res.message == constants.UnauthorizeMessage){
+                unauthorizeRef.value.OpenDialog()
+            }else{
+                snackbarRef.value.OpenSnackbar('red darken-2', err.message)
+            }
+        }).finally(()=>{
+            selected_id.value = 0
+        })
+    }else{
+        selected_id.value = 0
+    }
 }
 const GetActiveAmount = () => {
     service.GetActiveAmount().then((res) => {

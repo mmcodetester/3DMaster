@@ -18,7 +18,7 @@
                     <v-col cols="12">
                         <p>Example</p>
                         <ul style="list-style: none; padding-left: 0;">
-                            <li>112=100x100,</li>
+                            <li>112=100*100,</li>
                             <li>231=200,</li>
                         </ul>
                     </v-col>
