@@ -11,5 +11,8 @@ class DropDownService {
     GetWeeklyAmountList(year){
         return api.get(`/dropdown/getweeklistbyyear?year=${year}`, {headers: AuthHeader()})
     }
+    GetAllWeeklyAmountList(){
+        return api.get(`/dropdown/getallweeklist`, {headers: AuthHeader()})
+    }
 }
 export default new DropDownService()

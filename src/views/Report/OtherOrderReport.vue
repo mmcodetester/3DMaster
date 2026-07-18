@@ -15,7 +15,7 @@
                                 <v-col cols="12" md="4" align-self="center"
                                     :class="$vuetify.display.mdAndUp ? `mb-0` : `mb-n0`">
                                     <v-number-input type="text" density="compact" v-model="pagination.search.year"
-                                        variant="outlined"/>
+                                        variant="outlined" />
                                 </v-col>
                                 <v-col cols="12" md="2"
                                     :class="$vuetify.display.mdAndUp ? `text-right` : `text-left mb-n4`">
@@ -29,21 +29,21 @@
 
                             </v-row>
                             <v-row class="mt-n4">
-                                 <v-col cols="12" md="2"
+                                <v-col cols="12" md="2"
                                     :class="$vuetify.display.mdAndUp ? `text-right` : `text-left mb-n4`">
                                     <p class="text-body-2 mt-3">နံပါတ်</p>
                                 </v-col>
-                               <v-col cols="12" md="4">
-                                    <v-text-field
-                                        v-model="pagination.search.number" density="compact"
+                                <v-col cols="12" md="4">
+                                    <v-text-field v-model="pagination.search.number" density="compact"
                                         variant="outlined"></v-text-field>
                                 </v-col>
-                               
+
                                 <v-col cols="12" md="6"
                                     :class="$vuetify.display.mdAndUp ? `text-right mt-3` : `text-right mt-n4`">
                                     <v-btn size="small" color="red darken-2" @click.stop="Reset"
                                         class="mr-2">Reset</v-btn>
-                                    <v-btn size="small" color="success" class="mr-2" @click.stop="GetAllData">Search</v-btn>
+                                    <v-btn size="small" color="success" class="mr-2"
+                                        @click.stop="GetAllData">Search</v-btn>
                                     <!-- <v-btn size="small" :loading="excelLoading" @click.stop="ExportExcel"
                                         color="success" class="mr-0" variant="outlined"
                                         append-icon="mdi-file-excel">Export Excel</v-btn> -->
@@ -59,9 +59,11 @@
                 <v-card elevation="2">
                     <v-card-title>
                         <v-row>
-                            <v-col :cols=" $vuetify.display.smAndDown ? 12 : 6" ><span class="text-subtitle-1 font-weight-bold"> ဒိုင်ကြီးထံထားသောစာရင်း
+                            <v-col :cols="$vuetify.display.smAndDown ? 12 : 6"><span
+                                    class="text-subtitle-1 font-weight-bold"> ဒိုင်ကြီးထံထားသောစာရင်း
                                 </span></v-col>
-                            <v-col :cols=" $vuetify.display.smAndDown ? 12 : 6" :class="$vuetify.display.smAndDown ? 'mt-n6' : 'text-right'"> <span
+                            <v-col :cols="$vuetify.display.smAndDown ? 12 : 6"
+                                :class="$vuetify.display.smAndDown ? 'mt-n6' : 'text-right'"> <span
                                     class="text-subtitle-1 font-weight-bold">စုစုပေါင်း - </span><span
                                     class="text-subtitle-1 text-success font-weight-bold"> {{ total || 0 }}
                                 </span></v-col>
@@ -71,7 +73,8 @@
                     <v-card-text>
                         <v-col cols="12">
                             <v-data-table-server sort-desc-icon="mdi-sort-descending" sort-asc-icon="mdi-sort-ascending"
-                                :fixed-header="true" :fixed-footer="true" search="name" @update:options="GetAllData"
+                                :fixed-header="true" :fixed-footer="true" search="name"
+                                
                                 :items="items" :headers="headers" :must-sort="true" :items-length="recordTotal"
                                 :loading="loading" item-key="id" v-model:sort-by="pagination.sortBy"
                                 v-model:page="pagination.page" :items-per-page="pagination.itemsPerPage"
@@ -125,8 +128,8 @@ const pagination = ref({
     search: {
         name: '',
         role_id: null,
-        year : new Date().getFullYear(),
-        monthly_amount_id : null,
+        year: new Date().getFullYear(),
+        monthly_amount_id: null,
         number: null,
         date: new Date()
     },
@@ -144,8 +147,7 @@ const headers = [
 ];
 const recordTotal = ref(0);
 const items = ref([]);
-const GetAllData =() =>{
-    GetDetailsTotalAmount()
+const GetAllData = () => {
     GetAll()
 }
 const GetAll = () => {
@@ -162,6 +164,7 @@ const GetAll = () => {
         }
 
     }).finally(() => {
+         GetDetailsTotalAmount()
         loading.value = false
     })
 }
@@ -219,7 +222,7 @@ const Reset = () => {
 // }
 const GetDetailsTotalAmount = () => {
     otherorderService.GetTotal(pagination.value).then((res) => {
-        console.log(res.data)
+      
         total.value = res.data.total
         extra.value = res.data.extra
     }).catch((err) => {
@@ -228,54 +231,57 @@ const GetDetailsTotalAmount = () => {
 
     })
 }
-watch(()=>pagination.value.search.year,(newVal)=>{
-    if(newVal){
+watch(() => pagination.value.search.year, (newVal) => {
+    if (newVal) {
         GetWeeklyAmountList(newVal)
     }
 })
-const GetWeeklyAmountList = (year) =>{
-    dropdownService.GetWeeklyAmountList(year).then((res)=>{
+const GetWeeklyAmountList = (year) => {
+    dropdownService.GetWeeklyAmountList(year).then((res) => {
         weeklyList.value = res.data
-        if(pagination.value.search.monthly_amount_id){
+        if (pagination.value.search.monthly_amount_id) {
             pagination.value.search.monthly_amount_id = null
-        }
-    }).catch((err)=>{
+        } 
+    }).catch((err) => {
 
-    }).finally(()=>{
+    }).finally(() => {
 
     })
 }
-const GetInitialWeeklyAmountList = (year) =>{
-    dropdownService.GetWeeklyAmountList(year).then((res)=>{
+const GetInitialWeeklyAmountList = (year) => {
+    dropdownService.GetWeeklyAmountList(year).then((res) => {
         weeklyList.value = res.data
-        
-        const filter = res.data.filter(x=>x.status)[0]
-        if(filter){
+
+        const filter = res.data.filter(x => x.status)[0]
+        if (filter) {
             console.log('initital')
             pagination.value.search.monthly_amount_id = filter.id
+        }else {
+            pagination.value.search.monthly_amount_id = res.data[0].id
+            GetAllData()
         }
-    }).catch((err)=>{
+    }).catch((err) => {
 
-    }).finally(()=>{
+    }).finally(() => {
 
     })
 }
-const GetUserList = () =>{
-    dropdownService.GetUserList().then((res)=>{
+const GetUserList = () => {
+    dropdownService.GetUserList().then((res) => {
         userList.value = res.data
-    }).catch((err)=>{
-        if(err.message == constants.UnauthorizeMessage){
+    }).catch((err) => {
+        if (err.message == constants.UnauthorizeMessage) {
             unauthorizeRef.value.OpenDialog()
-        }else{
+        } else {
             snackbarRef.value.OpenSnackbar('red darken-2', err.message)
         }
-    }).finally(()=>{
+    }).finally(() => {
 
     })
 }
 onMounted(() => {
     pagination.value.search.year = new Date().getFullYear()
     GetInitialWeeklyAmountList(pagination.value.search.year)
-   // GetUserList()
+    // GetUserList()
 })
 </script>

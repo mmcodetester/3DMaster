@@ -15,20 +15,30 @@
         <v-card :rounded="0">
             <v-card-text>
                 <v-row no-gutters v-if="fullList.length == 0">
-                    <v-col cols="12">
+                    <v-col cols="8">
                         <p>Example</p>
                         <ul style="list-style: none; padding-left: 0;">
+                            <li>123=100R20,</li>
                             <li>112=100*100,</li>
                             <li>231=200,</li>
                         </ul>
                     </v-col>
+                     <v-col cols="4">
+                        <p>Total</p>
+                        <p>{{ total }}</p>
+                    </v-col>
                 </v-row>
                 <v-row no-gutters v-else>
-                    <v-col cols="12">
+                    <v-col cols="8">
                         <p class="text-red">Full List</p>
                         <ul style="list-style: none; padding-left: 0;">
                             <li class="text-red" v-for="item in fullList" :key="item.id">{{item.number}} = {{item.amount ?? 0}} <span v-if="item.extra">x</span> {{ item.extra ?? '' }},</li>
                         </ul>
+                    </v-col>
+
+                      <v-col cols="4">
+                        <p>Total</p>
+                        <p>{{ total }}</p>
                     </v-col>
                 </v-row>
                 <v-row>
@@ -65,64 +75,166 @@ const dialog = ref(false)
 const store = useAppStore()
 const data = ref('')
 const fullList = ref([])
+var total = ref(0)
 const CloseDialog = () => {
+    total.value = 0
     data.value = null
     numberAmountList.value = []
     fullList.value = []
     dialog.value = false
 }
 const OpenDialog = () =>{
+    total.value = 0
     data.value = null
     numberAmountList.value = []
     fullList.value = []
     dialog.value = true
 }
-watch(() => data.value, (newVal) => {
-    numberAmountList.value = []
-    fullList.value = []
-    if (!newVal) {
+// watch(() => data.value, (newVal) => {
+//     numberAmountList.value = []
+//     fullList.value = []
+//     if (!newVal) {
         
-        return;
-    };
+//         return;
+//     };
+
+//     const list = newVal.split(',');
+
+//     list.forEach((item) => {
+//         if (!item) return;
+//         const model = {
+//             id: null,
+//             number: null,
+//             amount: null,
+//             extra: null
+//         }
+//         // split number and amount
+//         const [number, amountPart] = item.split('=');
+
+//         if (!number || !amountPart) return;
+
+//         const cleanNumber = number.trim();
+//         const cleanAmount = amountPart.trim();
+
+//         model.number = cleanNumber;
+//         model.id = NumberList.find(x => x.number == cleanNumber).id;
+
+//         // check x or *
+//         if (cleanAmount.includes('x') || cleanAmount.includes('*')) {
+
+//             const [amount, extra] = cleanAmount.split(/x|\*/);
+
+//             model.amount = parseInt(amount.trim());
+//             model.extra = parseInt(extra.trim());
+
+//         } else {
+//             model.amount = parseInt(cleanAmount);
+//             model.extra = null;
+//         }
+//         CheckFull(model)
+//         numberAmountList.value.push(model)
+
+//     });
+//     console.log(numberAmountList.value);
+// });
+// Helper function to generate unique permutations of a string (e.g., "223" -> ["223", "232", "322"])
+// Helper function to generate unique permutations
+const getPermutations = (str) => {
+    if (str.length <= 1) return [str];
+    const permutations = [];
+    for (let i = 0; i < str.length; i++) {
+        const char = str[i];
+        const remainingChars = str.slice(0, i) + str.slice(i + 1);
+        for (const subPerm of getPermutations(remainingChars)) {
+            permutations.push(char + subPerm);
+        }
+    }
+    return [...new Set(permutations)];
+};
+
+watch(() => data.value, (newVal) => {
+    numberAmountList.value = [];
+    fullList.value = [];
+    
+    if (!newVal) return;
 
     const list = newVal.split(',');
 
     list.forEach((item) => {
         if (!item) return;
-        const model = {
-            id: null,
-            number: null,
-            amount: null,
-            extra: null
+
+        const [numberPart, amountPart] = item.split('=');
+        if (!numberPart || !amountPart) return;
+
+        const cleanNumber = numberPart.trim();
+        const cleanAmount = amountPart.trim().toUpperCase();
+
+        // 1. Case: R Permutation Logic (e.g., 123=100R20)
+        if (cleanAmount.includes('R')) {
+            const [baseAmountStr, permAmountStr] = cleanAmount.split('R');
+            const baseAmount = parseInt(baseAmountStr.trim());
+            const permAmount = parseInt(permAmountStr.trim());
+            
+            // Get all unique permutations (e.g., ["123", "132", "213", ...])
+            const allPermutations = getPermutations(cleanNumber);
+
+            allPermutations.forEach((num) => {
+                const matchedItem = NumberList.find(x => x.number == num);
+                const matchedId = matchedItem ? matchedItem.id : null;
+
+                // Rule: Original gets baseAmount, others get permAmount. Both have extra = 0.
+                const isOriginalNumber = (num === cleanNumber);
+
+                const model = {
+                    id: matchedId,
+                    number: num,
+                    amount: isOriginalNumber ? baseAmount : permAmount,
+                    extra: 0 
+                };
+
+                CheckFull(model);
+                numberAmountList.value.push(model);
+            });
+        } 
+        // 2. Case: Standard multipliers (e.g., 123=100*200)
+        else if (cleanAmount.includes('X') || cleanAmount.includes('*')) {
+            const [amount, extra] = cleanAmount.split(/X|\*/);
+            
+            const matchedItem = NumberList.find(x => x.number == cleanNumber);
+            const matchedId = matchedItem ? matchedItem.id : null;
+
+            const model = {
+                id: matchedId,
+                number: cleanNumber,
+                amount: parseInt(amount.trim()),
+                extra: parseInt(extra.trim()) 
+            };
+
+            CheckFull(model);
+            numberAmountList.value.push(model);
+        } 
+        // 3. Case: Plain numbers (e.g., 123=100)
+        else {
+            const matchedItem = NumberList.find(x => x.number == cleanNumber);
+            const matchedId = matchedItem ? matchedItem.id : null;
+
+            const model = {
+                id: matchedId,
+                number: cleanNumber,
+                amount: parseInt(cleanAmount),
+                extra: null
+            };
+
+            CheckFull(model);
+            numberAmountList.value.push(model);
         }
-        // split number and amount
-        const [number, amountPart] = item.split('=');
-
-        if (!number || !amountPart) return;
-
-        const cleanNumber = number.trim();
-        const cleanAmount = amountPart.trim();
-
-        model.number = cleanNumber;
-        model.id = NumberList.find(x => x.number == cleanNumber).id;
-
-        // check x or *
-        if (cleanAmount.includes('x') || cleanAmount.includes('*')) {
-
-            const [amount, extra] = cleanAmount.split(/x|\*/);
-
-            model.amount = parseInt(amount.trim());
-            model.extra = parseInt(extra.trim());
-
-        } else {
-            model.amount = parseInt(cleanAmount);
-            model.extra = null;
-        }
-        CheckFull(model)
-        numberAmountList.value.push(model)
-
     });
-    console.log(numberAmountList.value);
+    total.value = 0
+    numberAmountList.value.forEach((e)=>{
+        
+        total.value += e.amount + e.extra
+        console.log(total.value)
+    })
 });
 const CheckFull = (data) =>{
    const hasFull = store.fullOrderList.filter(x=>x.id ===data.id)[0]

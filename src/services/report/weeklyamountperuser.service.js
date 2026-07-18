@@ -14,7 +14,8 @@ class WeeklyAmountPerUserService {
                 name: param.search.name ? param.search.name : '',
                 date: param.search.date,
                 id: param.search.user_id,
-                number: param.search.number
+                number: param.search.number,
+                monthly_amount_id:param.search.monthly_amount_id
             },
         };
         return api.get('/weeklyamountperuser', config)
@@ -44,14 +45,24 @@ class WeeklyAmountPerUserService {
             params: {
                 name: param.search.name ?? '',
                 date: param.search.date,
+                 name: param.search.name ? param.search.name : '',
+                date: param.search.date,
                 id: param.search.user_id,
-                number: param.search.number
+                number: param.search.number,
+                monthly_amount_id:param.search.monthly_amount_id
             },
         };
         return api.get('/weeklyamountperuser/gettotal',config)
     }
-    GetCompairsm(){
-        return api.get('/weeklyamountperuser/getcompairsm',{headers: AuthHeader()})
+    GetCompairsm(param){
+        const config = {
+            headers: AuthHeader(),
+            params: {
+              
+                monthly_amount_id:param.search.monthly_amount_id
+            },
+        };
+        return api.get('/weeklyamountperuser/getcompairsm',config)
     }
 }
 

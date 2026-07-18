@@ -149,7 +149,7 @@ const headers = [
 const recordTotal = ref(0);
 const items = ref([]);
 const GetAllData =() =>{
-    GetDetailsTotalAmount()
+    
     GetAll()
 }
 const GetAll = () => {
@@ -166,6 +166,7 @@ const GetAll = () => {
         }
 
     }).finally(() => {
+        GetDetailsTotalAmount()
         loading.value = false
     })
 }
@@ -257,6 +258,9 @@ const GetInitialWeeklyAmountList = (year) =>{
         if(filter){
             console.log('initital')
             pagination.value.search.monthly_amount_id = filter.id
+        }else{
+             pagination.value.search.monthly_amount_id = res.data[0].id
+             GetAllData()
         }
     }).catch((err)=>{
 

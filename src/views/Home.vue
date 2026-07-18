@@ -53,9 +53,12 @@ import MonthlyCompairsm from './Dashboard/MonthlyCompairsm.vue';
 import weeklyreportService from '@/services/report/weeklyreport.service';
 import WeeklyCompairsm from './Dashboard/WeeklyCompairsm.vue';
 import { useRouter } from 'vuetify/lib/composables/router.mjs';
+import dropdownService from '@/services/dropdown.service.js';
 const snackbarRef = ref(null)
 const router = useRouter()
 const unauthorizeRef = ref(null)
+const year = new Date().getFullYear()
+const weeklyList = ref([])
 const ordertotal = ref({
     today_total : 0,
     weekly_total : 0,
@@ -75,6 +78,25 @@ const OrderTotal =()=>{
         }
     }).finally(()=>{
          GetDetailsTotalAmount()
+    })
+}
+const GetInitialWeeklyAmountList = () =>{
+    dropdownService.GetAllWeeklyAmountList().then((res)=>{
+        weeklyList.value = res.data
+         console.log(res.data)
+        const filter = res.data.filter(x=>x.status)[0]
+       
+        if(filter){
+            console.log('initital')
+            pagination.value.search.monthly_amount_id = filter.id
+        }else{
+             pagination.value.search.monthly_amount_id = res.data[0].id
+        }
+          OrderTotal()
+    }).catch((err)=>{
+
+    }).finally(()=>{
+       
     })
 }
 const pagination = ref({
@@ -101,6 +123,7 @@ const GetDetailsTotalAmount = () => {
 
     })
 }
+
 const CheckLogin = () =>{
     let user=JSON.parse(localStorage.getItem('2duser'));
     if(!user){
@@ -109,7 +132,8 @@ const CheckLogin = () =>{
 }
 onMounted(()=>{
    CheckLogin()
-    OrderTotal()
+   
+    GetInitialWeeklyAmountList()
     
 })
 </script>

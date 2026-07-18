@@ -61,7 +61,7 @@ class OtherOrderService {
             params: {
                 name: param.search.name ?? '',
                 date: param.search.date,
-                monthly_amount_id: param.search.id,
+                 monthly_amount_id: param.search.monthly_amount_id,
                 number: param.search.number
             },
         };
