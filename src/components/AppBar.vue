@@ -22,23 +22,31 @@
             color="primary" />
         </v-list-group>
 
-        <!-- Parent with no children -->
-        <!-- v-show="hasPermission(item.program_code)" -->
         <v-list-item v-else style="letter-spacing: 5px;" density="compact" link :title="item.title" color="primary"
           :to="item.url">
           <template v-slot:prepend>
             <v-icon color="primary" class="mr-n4" :icon="item.icon" />
           </template>
+
+          <template v-slot:append v-if="item.url === '/live-chat' && unreadCount > 0">
+            <v-badge color="error" class="text-center" :content="unreadCount" inline></v-badge>
+          </template>
         </v-list-item>
       </div>
     </v-list>
   </v-navigation-drawer>
+
   <v-app-bar>
     <v-app-bar-title class="text-primary">
       <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
       3D Notes
     </v-app-bar-title>
     <v-spacer></v-spacer>
+
+    <v-badge color="error" v-if="unreadCount>0 && currentRouteName!='LiveChat'" :content="unreadCount" :model-value="unreadCount > 0">
+      <v-icon size="25" class="mr-2" @click.stop="GoToChat">mdi-chat-outline</v-icon>
+    </v-badge>
+
     <v-menu location="bottom">
       <template #activator="{ props }">
         <v-icon size="25" location="top right" v-bind="props" class="mr-4">
@@ -62,12 +70,24 @@
       </v-card>
     </v-menu>
   </v-app-bar>
-  
 </template>
+
 <script setup>
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import Logo from '../assets/logo.jpg'
+import { db } from '@/utils/database'
+import { useSocketIO } from '@hlf01/vue3-socket.io'
+
 const router = useRouter()
+const route = useRoute()
+const unreadCount = ref(0)
 const drawer = ref(false)
+const currentRouteName = ref('')
+const socket = useSocketIO()
+const GoToChat = () => {
+  router.push({ name: "LiveChat" })
+}
 const store = ref({
   loginUser: {
     id: null,
@@ -75,6 +95,7 @@ const store = ref({
     username: '',
   },
 })
+
 const items = ref([
   { id: 1, title: 'မူလစာမျက်နှာ', url: '/', icon: 'mdi-view-dashboard', children: [] },
   { id: 2, title: 'အော်ဒါစာရင်းတင်ခြင်း', url: '/order', icon: 'mdi-cart-outline', children: [] },
@@ -87,22 +108,66 @@ const items = ref([
       { id: 8, title: 'အပတ်စဉ်အော်ဒါစာရင်း', url: '/weekly-report', icon: 'mdi-chevron-right' },
       { id: 8, title: 'ကော်စားအော်ဒါစာရင်း', url: '/weekly-per-user-report', icon: 'mdi-chevron-right' },
       { id: 9, title: 'ဒိုင်ကြီးမတင်ရသေးသောစာရင်း', url: '/other-report', icon: 'mdi-chevron-right' },
-      { id: 9, title: 'ဒိုင်ကြီးထံထားသောစာရင်း', url: '/other-order-report', icon: 'mdi-chevron-right' },
+      { id: 10, title: 'ဒိုင်ကြီးထံထားသောစာရင်း', url: '/other-order-report', icon: 'mdi-chevron-right' },
     ]
   },
+  { id: 11, title: 'Live Chat', url: '/live-chat', icon: 'mdi-chat-outline', children: [] },
 ])
+
 const Logout = () => {
   localStorage.removeItem('2duser')
-  router.push({name:'Login'})
+  router.push({ name: 'Login' })
 }
+
+const GetUnreadCount = async () => {
+  if (currentRouteName.value !== 'LiveChat') {
+    unreadCount.value = await db.messages.where('is_read').equals(0).count();
+  }
+}
+
+watch(() => route.name, (newVal) => {
+  if (newVal) {
+    currentRouteName.value = newVal
+    if (newVal !== 'LiveChat') {
+      GetUnreadCount()
+    } else {
+      unreadCount.value = 0
+    }
+  }
+}, { immediate: true })
+
 onMounted(() => {
   const user = localStorage.getItem('2duser')
   if (user) {
     const userStr = JSON.parse(JSON.stringify(user))
-     const loginUser = JSON.parse(userStr)
-     store.value.loginUser.id = loginUser.data.id
-     store.value.loginUser.username = loginUser.data.username
-     store.value.loginUser.name = loginUser.data.name
+    const loginUser = JSON.parse(userStr)
+    store.value.loginUser.id = loginUser.data.id
+    store.value.loginUser.username = loginUser.data.username
+    store.value.loginUser.name = loginUser.data.name
   }
+
+  GetUnreadCount()
+
+  socket.subscribe('message', async (data) => {
+    const existing = await db.messages.where('server_id').equals(data.server_id).first();
+    if (existing) return;
+
+    if (currentRouteName.value !== 'LiveChat') {
+      if (data.sender_id != store.value.loginUser.id) {
+        await db.messages.add({
+          server_id: data.server_id,
+          sender_id: data.sender_id,
+          sender: data.sender,
+          text: data.text,
+          date: data.date,
+          syncStatus: 'synced',
+          is_read: 0
+        });
+      }
+      if (data.sender_id !== store.value.loginUser.id) {
+        await GetUnreadCount();
+      }
+    }
+  });
 })
 </script>

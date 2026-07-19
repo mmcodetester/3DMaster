@@ -6,6 +6,7 @@
 
 // Composables
 import Home from '@/views/Home.vue'
+import LiveChat from '@/views/LiveChat.vue'
 import Login from '@/views/Login.vue'
 import MonthlyAmount from '@/views/MonthlyAmount.vue'
 import Order from '@/views/Order.vue'
@@ -103,6 +104,14 @@ const routes = [
     path:'/other-order-report',
     name:'OtherOrderReport',
     component: OtherOrderReport,
+    meta:{
+      layout:'default-layout'
+    }
+  },
+  {
+    path:'/live-chat',
+    name:'LiveChat',
+    component: LiveChat,
     meta:{
       layout:'default-layout'
     }
