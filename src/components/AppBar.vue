@@ -29,7 +29,7 @@
           </template>
 
           <template v-slot:append v-if="item.url === '/live-chat' && unreadCount > 0">
-            <v-badge color="error" class="text-center" :content="unreadCount" inline></v-badge>
+            <v-badge color="error" class="text-center" :content="unreadCount.length===1 ? '1' : `1+`" inline></v-badge>
           </template>
         </v-list-item>
       </div>
@@ -86,6 +86,7 @@ const drawer = ref(false)
 const currentRouteName = ref('')
 const socket = useSocketIO()
 const GoToChat = () => {
+  unreadCount.value = 0;
   router.push({ name: "LiveChat" })
 }
 const store = ref({
@@ -121,10 +122,14 @@ const Logout = () => {
 
 const GetUnreadCount = async () => {
   if (currentRouteName.value !== 'LiveChat') {
-    unreadCount.value = await db.messages.where('is_read').equals(0).count();
+    return unreadCount.value ;
   }
 }
-
+const SetUnreadCount = async () => {
+  if (currentRouteName.value !== 'LiveChat') {
+    unreadCount.value ++;
+  }
+}
 watch(() => route.name, (newVal) => {
   if (newVal) {
     currentRouteName.value = newVal
@@ -146,26 +151,24 @@ onMounted(() => {
     store.value.loginUser.name = loginUser.data.name
   }
 
-  GetUnreadCount()
-
   socket.subscribe('message', async (data) => {
     const existing = await db.messages.where('server_id').equals(data.server_id).first();
     if (existing) return;
 
     if (currentRouteName.value !== 'LiveChat') {
       if (data.sender_id != store.value.loginUser.id) {
-        await db.messages.add({
-          server_id: data.server_id,
-          sender_id: data.sender_id,
-          sender: data.sender,
-          text: data.text,
-          date: data.date,
-          syncStatus: 'synced',
-          is_read: 0
-        });
+        // await db.messages.add({
+        //   server_id: data.server_id,
+        //   sender_id: data.sender_id,
+        //   sender: data.sender,
+        //   text: data.text,
+        //   date: data.date,
+        //   syncStatus: 'synced',
+        //   is_read: 0
+        // });
       }
       if (data.sender_id !== store.value.loginUser.id) {
-        await GetUnreadCount();
+        await SetUnreadCount()
       }
     }
   });
