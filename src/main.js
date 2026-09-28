@@ -9,7 +9,7 @@ import { registerPlugins } from '@/plugins'
 
 // Components
 import App from './App.vue'
-
+import { vLongpress } from '@nanogiants/vue3-longpress';
 // Composables
 import { createApp } from 'vue'
 
@@ -27,6 +27,7 @@ const vue3SocketIO = new VueSocketIO({
 const app = createApp(App)
 app.use(vue3SocketIO)
 app.use(VueApexCharts);
+app.directive('use-longpress', vLongpress);
 app.component('login-layout', LoginLayout)
 app.component('default-layout', DefaultLayout)
 

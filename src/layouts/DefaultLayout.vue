@@ -13,16 +13,21 @@
 
 <script setup>
 import AppBar from '@/components/AppBar.vue';
+import { useAppStore } from '@/stores/app';
 import { Network } from '@capacitor/network';
+const store = useAppStore()
+
 const isConnected = ref(false)
 const logCurrentNetworkStatus = async () => {
   const status = await Network.getStatus();
 
     isConnected.value = status.connected
+    store.SetNetworkState(status.connected)
 };
 onMounted(async() => {
   Network.addListener('networkStatusChange', status => {
      isConnected.value = status.connected
+      store.SetNetworkState(status.connected)
   });
   await logCurrentNetworkStatus()
 })

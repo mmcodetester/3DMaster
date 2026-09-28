@@ -7,7 +7,10 @@ export const useAppStore = defineStore('app', {
       data: [],
       total: 0
     },
-    fullOrderList:[]
+    fullOrderList:[],
+    networkState:{
+      connected : false
+    }
   }),
   actions: {
     AddToOrderList(order) {
@@ -33,6 +36,9 @@ export const useAppStore = defineStore('app', {
         (sum, item) => sum + Number(item.amount || 0),
         0
       )
+    },
+    SetNetworkState(state){
+      this.networkState.connected = state
     }
   }
 })

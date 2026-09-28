@@ -9,9 +9,9 @@
                 <v-avatar v-if="msg.sender_id !== myId" color="secondary" size="36" class="me-2 mb-1" theme="dark">
                     <span class="text-subtitle-2 font-weight-bold">{{ getAvatarInitials(msg.sender) }}</span>
                 </v-avatar>
-                <v-card :color="msg.sender_id === myId ? 'primary' : 'white'"
-                    :theme="msg.sender_id === myId ? 'dark' : 'light'" max-width="70%" elevation="1" rounded="lg"
-                    class="pa-3">
+                <v-card :color="msg.sender_id === myId ? 'primary' : 'white'" v-use-longpress="1000"
+                    @longpress="(evt)=>onLongpress(evt, msg)" :theme="msg.sender_id === myId ? 'dark' : 'light'" max-width="70%"
+                    elevation="1" rounded="lg" class="pa-3">
 
                     <div
                         :class="msg.sender_id !== myId ? `text-caption font-weight-bold text-secondary mb-1` : 'text-caption font-weight-bold text-amber-lighten-4 mb-1'">
@@ -28,7 +28,19 @@
                 </v-card>
             </v-col>
         </v-row>
-
+        <v-menu v-model="menu.visible" :close-on-content-click="true" :activator="menu.activator" location="bottom">
+            <v-list density="compact">
+                <v-list-item @click="handleReply">
+                    <v-list-item-subtitle>Reply</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item @click="handlePin">
+                    <v-list-item-subtitle>Pin</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item class="text-error" @click="handleDelete">
+                    <v-list-item-subtitle>Delete</v-list-item-subtitle>
+                </v-list-item>
+            </v-list>
+        </v-menu>
         <v-row v-if="isTyping" class="mb-4" no-gutters>
             <v-col cols="12" class="d-flex align-center justify-start">
                 <v-avatar color="secondary" size="36" class="me-2" theme="dark">
@@ -55,14 +67,14 @@
     <v-bottom-navigation app height="72" color="white" class="border-top px-4">
         <v-row no-gutters align="center" class="w-100">
             <v-col cols="auto" class="pe-2">
-                <v-menu v-model="emojiMenu" :close-on-content-click="true" location="top" offset="20">
+                <v-menu v-model="emojiMenu" :close-on-content-click="true" location="top" offset="20" height="200">
                     <template v-slot:activator="{ props }">
                         <v-icon color="grey-darken-1" variant="text" v-bind="props">mdi-emoticon-happy-outline</v-icon>
                     </template>
                     <v-card class="pa-2 emoji-picker-card" width="100%" elevation="4" rounded="lg">
                         <v-row no-gutters class="emoji-grid">
                             <v-col cols="auto" v-for="emoji in emojis" :key="emoji" class="pa-1">
-                                <v-btn variant="text" density="compact" class="emoji-btn" @click="addEmoji(emoji)">
+                                <v-btn variant="text" size="30" density="compact" class="emoji-btn" @click="addEmoji(emoji)">
                                     {{ emoji }}
                                 </v-btn>
                             </v-col>
@@ -81,12 +93,27 @@
     </v-bottom-navigation>
 </template>
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, nextTick, watch, reactive } from 'vue'
 import { db } from '@/utils/database'
 import chatService from '@/services/chat.service'
 import { useSocketIO } from '@hlf01/vue3-socket.io'
 import moment from 'moment'
-
+import { useAppStore } from '@/stores/app'
+import { NativeAudio } from '@capgo/capacitor-native-audio';
+import typing from '@/assets/typing.mp3'
+import { Capacitor } from '@capacitor/core'
+import Emoji from '@/utils/emoji'
+//import typingSound from '../../public/typing.mp3'
+const menu = reactive(
+    {
+        visible: false,
+        activator: null,
+        selectedMsg: null,
+    }
+)
+const isNative = Capacitor.isNativePlatform()
+let webAudio = null;
+const store = useAppStore()
 const isTyping = ref(false)
 const typingUser = ref('')
 const socket = useSocketIO()
@@ -107,29 +134,25 @@ const hasOlderLocal = ref(false)
 const isLoadingOlder = ref(false)
 const isUserAtBottom = ref(true)
 const emojiMenu = ref(false)
-const emojis = ref([
-    '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
-    '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚',
-    '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩',
-    '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣',
-    '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬',
-    '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗',
-    '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯',
-    '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐',
-    '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈',
-    '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾',
-    '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿',
-    '😾', '👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤏', '✌️', '🤞',
-    '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍',
-    '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝',
-    '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂',
-    '🦻', '👃', '🧠', '🦷', '🦴', '👀', '👁️', '👅', '👄', '💋',
-    '🩸', '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎'
-])
+const emojis = Emoji.emojis
 
 const addEmoji = (emoji) => {
     newMessage.value += emoji
 }
+const handleReply = () => {
+  if (!menu.selectedMsg) return;
+  console.log('Reply to', menu.selectedMsg);
+};
+
+const handlePin = () => {
+  if (!menu.selectedMsg) return;
+  console.log('Pin', menu.selectedMsg);
+};
+
+const handleDelete = () => {
+  if (!menu.selectedMsg) return;
+  console.log('Delete', menu.selectedMsg);
+};
 const refreshActiveView = async (preserveScrollDirection = null) => {
     try {
         const container = chatContainer.value?.$el || chatContainer.value;
@@ -295,9 +318,56 @@ const sendTypingEvent = async () => {
         console.log(err)
     })
 }
+const initTypingSoung = async () => {
+    try {
+        if (isNative) {
+            await NativeAudio.preload({
+                assetId: 'typing_sound',
+                assetPath: 'typing.mp3',
+                audioChannelNum: 1,
+                isUrl: false
+            }).catch((e) => {
+                //alert(e)
+            });
+        } else {
+            webAudio = new Audio(typing);
+            webAudio.load();
+        }
+
+    } catch (e) {
+        console.log(e)
+    }
+}
+const playTypingSound = async () => {
+    if (isNative) {
+        await NativeAudio.play({
+            assetId: 'typing_sound',
+        }).catch((e) => {
+            //alert(e)
+        });
+    } else if (webAudio) {
+        webAudio.currentTime = 0;
+        webAudio.play()
+            .catch(err => console.log("Web audio playback blocked by browser policy:", err));
+    }
+}
+
+const onLongpress = (e, msg) => {
+    console.log(msg)
+    const target = e.target;
+    menu.activator = target || e.currentTarget || null;
+    menu.selectedMsg = msg;
+    menu.visible = true;
+};
 watch(() => newMessage.value, (newVal) => {
     if (newVal && newVal.length > 0) {
         sendTypingEvent()
+    }
+})
+watch(() => store.networkState.connected, async (newVal) => {
+    if (newVal) {
+        await syncUnreadFromNetwork();
+        await refreshActiveView();
     }
 })
 onMounted(async () => {
@@ -307,15 +377,25 @@ onMounted(async () => {
         myName.value = user.data.name;
     }
 
-    await syncUnreadFromNetwork();
+    await initTypingSoung()
+    if (store.networkState.connected) {
+        await syncUnreadFromNetwork();
+    }
     await refreshActiveView();
     await scrollToBottom();
     socket.subscribe('typing', async (data) => {
         if (data.sender_id === myId.value) return
 
         isTyping.value = true
+        if (isTyping.value) {
+            await playTypingSound()
+        }
         typingUser.value = data.sender || 'Someone'
-        await scrollToBottom();
+        const shouldMarkAsRead = isUserAtBottom.value;
+        if (shouldMarkAsRead) {
+            await scrollToBottom();
+        }
+
         clearTimeout(typingTimer)
 
         typingTimer = setTimeout(() => {
@@ -324,40 +404,47 @@ onMounted(async () => {
         }, 500)
     })
     socket.subscribe('message', async (data) => {
-    
-    const existing = await db.messages.where('server_id').equals(data.server_id).first();
-    if (existing) return;
 
-    if (data.sender_id === myId.value && data.local_id) {
-        const localPendingMsg = await db.messages.get(Number(data.local_id));
+        const existing = await db.messages.where('server_id').equals(data.server_id).first();
+        if (existing) return;
 
-        if (localPendingMsg && localPendingMsg.syncStatus === 'pending') {
-            await db.messages.update(localPendingMsg.id, {
-                server_id: data.server_id,
-                syncStatus: 'synced',
-                date: data.date
-            });
-            await refreshActiveView();
-            return;
+        if (data.sender_id === myId.value && data.local_id) {
+            const localPendingMsg = await db.messages.get(Number(data.local_id));
+
+            if (localPendingMsg && localPendingMsg.syncStatus === 'pending') {
+                await db.messages.update(localPendingMsg.id, {
+                    server_id: data.server_id,
+                    syncStatus: 'synced',
+                    date: data.date
+                });
+                await refreshActiveView();
+                return;
+            }
         }
-    }
 
-    const shouldMarkAsRead = isUserAtBottom.value;
-    await db.messages.add({
-        server_id: data.server_id,
-        sender_id: data.sender_id,
-        sender: data.sender,
-        text: data.text,
-        date: data.date,
-        syncStatus: 'synced',
-        is_read: shouldMarkAsRead ? 1 : 0
+        const shouldMarkAsRead = isUserAtBottom.value;
+        await db.messages.add({
+            server_id: data.server_id,
+            sender_id: data.sender_id,
+            sender: data.sender,
+            text: data.text,
+            date: data.date,
+            syncStatus: 'synced',
+            is_read: shouldMarkAsRead ? 1 : 0
+        });
+
+        await refreshActiveView();
+        if (shouldMarkAsRead) {
+            await scrollToBottom();
+        }
     });
+})
+onUnmounted(()=>{
 
-    await refreshActiveView();
-    if (shouldMarkAsRead) {
-        await scrollToBottom();
-    }
-});
+socket.unsubscribe("typing")
+
+socket.unsubscribe("message")
+
 })
 </script>
 
