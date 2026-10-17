@@ -5,6 +5,8 @@ const config: CapacitorConfig = {
   appName: '3DMaster',
   webDir: 'dist',
    plugins: {
+    PushNotifications: { presentationOptions: [] },
+    LocalNotifications: { smallIcon: 'ic_chat_notification', iconColor: '#3348A6' },
     NativeAudio: {
       hls: false
     }

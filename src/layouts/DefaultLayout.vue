@@ -3,7 +3,7 @@
 
   <v-main>
     <v-row v-if="!isConnected">
-      <v-col cols="12" class="text-center">
+      <v-col class="text-center" cols="12">
         <p class="text-red">No Internet Connection</p>
       </v-col>
     </v-row>
@@ -12,23 +12,35 @@
 </template>
 
 <script setup>
-import AppBar from '@/components/AppBar.vue';
-import { useAppStore } from '@/stores/app';
-import { Network } from '@capacitor/network';
-const store = useAppStore()
+  import { Network } from '@capacitor/network'
+  import { useRouter } from 'vue-router'
+  import AppBar from '@/components/AppBar.vue'
+  import { configureChatNavigation, startChat, stopChat } from '@/services/chat.state'
+  import { useAppStore } from '@/stores/app'
+  const router = useRouter()
+  configureChatNavigation(roomId => {
+    void router.push({ name: 'LiveChat', query: { room: String(roomId) } })
+  })
+  let networkListener
+  onUnmounted(() => {
+    stopChat()
+    networkListener?.remove()
+  })
+  const store = useAppStore()
 
-const isConnected = ref(false)
-const logCurrentNetworkStatus = async () => {
-  const status = await Network.getStatus();
+  const isConnected = ref(false)
+  async function logCurrentNetworkStatus () {
+    const status = await Network.getStatus()
 
     isConnected.value = status.connected
     store.SetNetworkState(status.connected)
-};
-onMounted(async() => {
-  Network.addListener('networkStatusChange', status => {
-     isConnected.value = status.connected
+  }
+  onMounted(async () => {
+    startChat().catch(console.error)
+    networkListener = await Network.addListener('networkStatusChange', status => {
+      isConnected.value = status.connected
       store.SetNetworkState(status.connected)
-  });
-  await logCurrentNetworkStatus()
-})
+    })
+    await logCurrentNetworkStatus()
+  })
 </script>

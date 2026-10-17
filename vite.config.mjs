@@ -10,6 +10,7 @@ import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 
 // Utilities
 import { defineConfig } from 'vite'
+import { existsSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
@@ -59,7 +60,10 @@ export default defineConfig({
       'unplugin-vue-router/data-loaders/basic',
     ],
   },
-  define: { 'process.env': {} },
+  define: {
+    'process.env': {},
+    'import.meta.env.VITE_CHAT_PUSH_CONFIGURED': existsSync(fileURLToPath(new URL('./android/app/google-services.json', import.meta.url))),
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('src', import.meta.url)),
