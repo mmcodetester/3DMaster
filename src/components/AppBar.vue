@@ -77,6 +77,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import Logo from '../assets/logo.jpg'
 import { db } from '@/utils/database'
+import { clearLoginInfo, getLoginInfo } from '@/services/auth.session.js'
 import { useSocketIO } from '@hlf01/vue3-socket.io'
 
 const router = useRouter()
@@ -116,8 +117,8 @@ const items = ref([
 ])
 
 const Logout = () => {
-  localStorage.removeItem('2duser')
-  router.push({ name: 'Login' })
+  clearLoginInfo()
+  router.replace({ name: 'Login' })
 }
 
 const GetUnreadCount = async () => {
@@ -142,10 +143,8 @@ watch(() => route.name, (newVal) => {
 }, { immediate: true })
 
 onMounted(() => {
-  const user = localStorage.getItem('2duser')
-  if (user) {
-    const userStr = JSON.parse(JSON.stringify(user))
-    const loginUser = JSON.parse(userStr)
+  const loginUser = getLoginInfo()
+  if (loginUser) {
     store.value.loginUser.id = loginUser.data.id
     store.value.loginUser.username = loginUser.data.username
     store.value.loginUser.name = loginUser.data.name

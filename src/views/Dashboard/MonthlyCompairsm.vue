@@ -3,6 +3,7 @@
         <v-col cols="12">
             <v-card>
                 <v-card-text>
+                    <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-3">{{ errorMessage }}</v-alert>
                     <div id="chart">
                         <apexchart type="line" height="350" :options="chartOptions" :series="series"></apexchart>
                     </div>
@@ -13,9 +14,9 @@
 </template>
 <script setup>
 import dashboardService from '@/services/dashboard.service';
-import UnauthorizeDialog from '@/components/UnauthorizeDialog.vue';
-import SnackbarDialog from '@/components/SnackbarDialog.vue';
+
 const series = ref([])
+const errorMessage = ref('')
 const chartOptions = ref({
     chart: {
         height: 350,
@@ -24,6 +25,10 @@ const chartOptions = ref({
             enabled: false
         }
     },
+    colors: ['#1976d2', '#ef8b24'],
+    legend: { show: true, position: 'top' },
+    markers: { size: 3 },
+    tooltip: { shared: true, intersect: false },
     dataLabels: {
         enabled: false
     },
@@ -31,7 +36,7 @@ const chartOptions = ref({
         curve: 'straight'
     },
     title: {
-        text: 'Monthly Order Compairsm This Year',
+        text: 'Monthly Order Comparison This Year',
         align: 'left'
     },
     grid: {
@@ -45,11 +50,9 @@ const chartOptions = ref({
 },
 );
 const Get = () => {
+    errorMessage.value = ''
     dashboardService.GetMonthlyCompairsm().then((res) => {
-        series.value = []
-        series.value.push(res.data.series)
-       // console.log(res.data.series)
-        //series.value = res.data.series
+        series.value = res.data.series
         chartOptions.value = {
             ...chartOptions.value,
             xaxis: {
@@ -58,10 +61,9 @@ const Get = () => {
             }
         }
         
-    }).catch((err) => {
-
-    }).finally(() => {
-
+    }).catch(() => {
+        series.value = []
+        errorMessage.value = 'Monthly order comparison could not be loaded. Please try again.'
     })
 }
 onMounted(() => {

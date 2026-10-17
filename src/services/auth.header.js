@@ -1,13 +1,6 @@
-export default function AuthHeader() {
-    let user=JSON.parse(localStorage.getItem('2duser'));
+import { getLoginInfo } from './auth.session.js'
 
-    if (user && user.token) {
-        return {
-            Authorization: `Bearer ${user.token}`
-        };
-    } else {
-      return{
-        
-      }
-    }
+export default function AuthHeader() {
+    const login = getLoginInfo()
+    return login ? { Authorization: `Bearer ${login.token}` } : {}
 }

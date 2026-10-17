@@ -19,6 +19,7 @@ import WeeklyReportPerUser from '@/views/Report/WeeklyReportPerUser.vue'
 import UserList from '@/views/User/UserList.vue'
 
 import { createRouter, createWebHistory } from 'vue-router'
+import { getAuthRedirect } from '@/services/auth.session.js'
 const routes = [
   {
     path:'/',
@@ -122,6 +123,8 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
 })
+
+router.beforeEach(getAuthRedirect)
 
 // Workaround for https://github.com/vitejs/vite/issues/11804
 router.onError((err, to) => {

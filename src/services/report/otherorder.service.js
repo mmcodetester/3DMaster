@@ -67,6 +67,9 @@ class OtherOrderService {
         };
         return api.get('/otherorder/gettotal',config)
     }
+    ConfirmOrders(ids) {
+        return api.post('/otherorder/confirmorders', { ids }, { headers: AuthHeader() })
+    }
     ConfirmOrder(id){
          return api.get(`/otherorder/confirmorder?id=${id}`,{headers: AuthHeader()})
     }

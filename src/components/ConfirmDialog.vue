@@ -12,9 +12,9 @@
         <v-card-actions class="text-right mt-n3">
             <v-col cols="12" md="12" class="text-right">
                 <v-btn class="ml-2" dark variant="outlined" color="warning" @click.stop="CancelClick()"
-                size="small">Cancel</v-btn>
+                size="small">{{ props.cancelText }}</v-btn>
                 <v-btn class="ml-2" dark variant="outlined" color="primary" @click.stop="OKClick()"
-                size="small">OK</v-btn>
+                size="small">{{ props.confirmText }}</v-btn>
             </v-col>
         </v-card-actions>
     </v-card>
@@ -22,6 +22,10 @@
 </template>
 <script setup>
 import { ref } from 'vue';
+const props = defineProps({
+    confirmText: { type: String, default: 'OK' },
+    cancelText: { type: String, default: 'Cancel' },
+})
 const dialog = ref(false)
 const emit = defineEmits(['confirm'])
 const alertMessage = ref('')
@@ -31,6 +35,7 @@ const CancelClick = () =>{
     emit('confirm', false)
 }
 const OKClick = () =>{
+    if (!dialog.value) return
     dialog.value = false
     emit('confirm', true)
 }

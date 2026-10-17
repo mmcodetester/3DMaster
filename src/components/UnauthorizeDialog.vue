@@ -23,17 +23,17 @@
     </v-dialog>
 </template>
 <script setup>
-import { useAppStore } from '@/stores/app'
+import { clearLoginInfo } from '@/services/auth.session.js'
 
-const store = useAppStore()
 const router = useRouter()
 const dialog = ref(false)
 const GoBackLogin =()=>{
-    localStorage.removeItem('user')
-    router.push({name:'Login'})
+    clearLoginInfo()
+    dialog.value = false
+    router.replace({name:'Login'})
 }
 const OpenDialog = () =>{
-    dialog.value = true
+    GoBackLogin()
 }
 defineExpose({
     OpenDialog

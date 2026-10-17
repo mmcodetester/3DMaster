@@ -57,7 +57,7 @@ const Login = () =>{
     loading.value = true
     authService.Login(user.value).then((res)=>{
         if(res.success){
-            router.push({name:'Home'})
+            router.replace({name:'Home'})
         }else{
             const color = 'red darken-2'
             const message = res.messages[0]

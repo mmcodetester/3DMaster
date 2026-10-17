@@ -62,13 +62,31 @@
                             <v-col :cols="$vuetify.display.smAndDown ? 12 : 6"><span
                                     class="text-subtitle-1 font-weight-bold"> ဒိုင်ကြီးထံမတင်ရသေးသောစာရင်း
                                 </span></v-col>
-
+                            <v-col cols="12" md="6" class="d-flex flex-wrap ga-2 justify-end align-center">
+                                <v-btn color="primary" prepend-icon="mdi-content-copy" :loading="copyLoading"
+                                    :disabled="loading || submitting || selectLoading" @click="CopyAll">Copy All</v-btn>
+                                <v-btn color="success" prepend-icon="mdi-check-all" :loading="submitting"
+                                    :disabled="!selectedIds.length || loading || selectLoading" @click="ConfirmSelected">
+                                    ရွေးချယ်ထားသည်များကို တင်မည် ({{ selectedIds.length }})
+                                </v-btn>
+                            </v-col>
                         </v-row>
                     </v-card-title>
                     <v-divider></v-divider>
                     <v-card-text>
+                        <v-row>
+                            <v-col cols="12">
+                                <v-btn variant="outlined" color="primary" size="small" :loading="selectLoading"
+                                :disabled="loading || submitting || copyLoading || !recordTotal" @click="SelectAllMatching">
+                                အားလုံးရွေးမည်
+                            </v-btn>
+                            <v-btn variant="text" size="small" :disabled="!selectedIds.length || submitting || selectLoading"
+                                @click="selectedIds = []">ရွေးထားသည်များရှင်းမည်</v-btn>
+                            </v-col>
+                        </v-row>
                         <v-col cols="12">
-                            <v-data-table-server sort-desc-icon="mdi-sort-descending" sort-asc-icon="mdi-sort-ascending"
+                            <v-data-table-server v-model="selectedIds" show-select item-value="id" select-strategy="page"
+                                :item-selectable="canSelectOrder" sort-desc-icon="mdi-sort-descending" sort-asc-icon="mdi-sort-ascending"
                                 :fixed-header="true" :fixed-footer="true" search="name" @update:options="GetAllData"
                                 :items="items" :headers="headers" :must-sort="true" :items-length="recordTotal"
                                 :loading="loading" item-key="id" v-model:sort-by="pagination.sortBy"
@@ -78,7 +96,7 @@
 
                                     <v-btn rounded="lg" color="success" class="ml-2" size="small"
                                         variant="outlined" prepend-icon="mdi-check-circle-outline"
-                                        @click.stop="Edit(item.id)">ဒိုင်ကြီးတင်မည်</v-btn>
+                                        :disabled="submitting || selectLoading" @click.stop="Edit(item.id)">ဒိုင်ကြီးတင်မည်</v-btn>
                                    
 
                                 </template>
@@ -97,9 +115,21 @@
                 </v-col>
             </v-row>
         </v-dialog>
+        <v-dialog v-model="copyDialog" max-width="560">
+            <v-card title="စာရင်းကူးယူရန်">
+                <v-card-text>
+                    <p class="mb-3">အလိုအလျောက် ကူးမရပါက အောက်ပါစာသားကို ရွေးပြီး ကူးယူနိုင်ပါတယ်။</p>
+                    <v-textarea :model-value="copyContent" readonly variant="outlined" rows="8" hide-details
+                        aria-label="Copy all unsubmitted orders" @focus="$event.target.select()" />
+                </v-card-text>
+                <v-card-actions><v-btn @click="copyDialog = false">Close</v-btn><v-spacer />
+                    <v-btn color="primary" prepend-icon="mdi-content-copy" @click="CopyPreparedText">Copy</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
         <UnauthorizeDialog ref="unauthorizeRef" />
         <SnackbarDialog ref="snackbarRef" />
-        <ConfirmDialog ref="confirmRef" @confirm="Confirm"/>
+        <ConfirmDialog ref="confirmRef" confirm-text="အတည်ပြုပြီး တင်မည်" cancel-text="မတင်တော့ပါ" @confirm="Confirm"/>
     </v-col>
 </template>
 <script setup>
@@ -112,7 +142,47 @@ import moment from 'moment';
 import dropdownService from '@/services/dropdown.service';
 import weeklyreportService from '@/services/report/weeklyreport.service';
 import otherorderService from '@/services/report/otherorder.service';
+import { formatUnsubmittedOrders } from '@/utils/unsubmitted-copy.js';
+import { copyText } from '@/utils/clipboard.js';
 
+
+const copyLoading = ref(false)
+const copyDialog = ref(false)
+const copyContent = ref('')
+const CopyPreparedText = async () => {
+    try {
+        await copyText(copyContent.value)
+        copyDialog.value = false
+        snackbarRef.value.OpenSnackbar('success', 'စာရင်းအားလုံး ကူးယူပြီးပါပြီ။')
+    } catch {
+        copyDialog.value = true
+    }
+}
+const CopyAll = async () => {
+    if (copyLoading.value) return
+    copyLoading.value = true
+    try {
+        const params = JSON.parse(JSON.stringify(pagination.value))
+        params.page = 1
+        params.itemsPerPage = -1
+        const res = await otherorderService.GetAllUnOrder(params)
+        if (!Array.isArray(res.data.data) || res.data.data.length !== Number(res.data.total)) {
+            throw new Error('စာရင်းအပြည့်အစုံ မရရှိသဖြင့် ပြန်လည်ကြိုးစားပါ။')
+        }
+        copyContent.value = formatUnsubmittedOrders(res.data.data)
+        if (!copyContent.value) {
+            snackbarRef.value.OpenSnackbar('warning', 'ကူးယူရန် စာရင်းမရှိပါ။')
+            return
+        }
+        await CopyPreparedText()
+    } catch (err) {
+        if (err.response?.status !== 401 && err.code !== 'ERR_CANCELED') {
+            snackbarRef.value.OpenSnackbar('red darken-2', err.message)
+        }
+    } finally {
+        copyLoading.value = false
+    }
+}
 
 const dateStr = ref('')
 
@@ -127,7 +197,11 @@ const userList = ref([])
 const weeklyList = ref([])
 const total = ref(0)
 const extra = ref(0)
-const selected_id = ref(0)
+const selectedIds = ref([])
+const pendingIds = ref([])
+const submitting = ref(false)
+const selectLoading = ref(false)
+const canSelectOrder = () => !submitting.value && !selectLoading.value
 const pagination = ref({
     search: {
         name: '',
@@ -156,34 +230,63 @@ const GetAllData = () => {
    // GetDetailsTotalAmount()
     GetAll()
 }
-const Confirm =(val) =>{
-    if(val){
-        
-        if(selected_id.value >0){
-            loading.value = true
-            otherorderService.ConfirmOrder(selected_id.value).then((res)=>{
-                const color = res.data.success ? 'success' :'red darken-2'
-                const message = res.data.messages[0]
-                snackbarRef.value.OpenSnackbar(color, message)
-            }).catch((err)=>{
-                snackbarRef.value.OpenSnackbar('red darken-2', err.message)
-            }).finally(()=>{
-                loading.value = false
-                GetAllData()
-                selected_id.value = 0
-            })
+const SelectAllMatching = async () => {
+    if (selectLoading.value || submitting.value) return
+    selectLoading.value = true
+    const filters = JSON.stringify(pagination.value.search)
+    try {
+        const params = JSON.parse(JSON.stringify(pagination.value))
+        params.page = 1
+        params.itemsPerPage = -1
+        const res = await otherorderService.GetAllUnOrder(params)
+        if (JSON.stringify(pagination.value.search) !== filters) return
+        if (!Array.isArray(res.data.data) || res.data.data.length !== Number(res.data.total)) {
+            throw new Error('စာရင်းအပြည့်အစုံ မရရှိသဖြင့် ပြန်လည်ကြိုးစားပါ။')
         }
-    }else{
-        selected_id.value = 0
+        selectedIds.value = [...new Set(res.data.data.map(row => row.id))]
+    } catch (err) {
+        if (err.response?.status !== 401 && err.code !== 'ERR_CANCELED') {
+            snackbarRef.value.OpenSnackbar('red darken-2', err.message)
+        }
+    } finally {
+        selectLoading.value = false
     }
 }
-const Edit = (id) =>{
-    selected_id.value=id
-    confirmRef.value.OpenDialog('ဒိုင်ကြီးထံတင်ရန်','ဒိုင်ကြီးထံတင်မည်သေချာပါသလား?')
+const ConfirmSelected = () => {
+    if (!selectedIds.value.length || submitting.value) return
+    pendingIds.value = [...selectedIds.value]
+    confirmRef.value.OpenDialog('ဒိုင်ကြီးထံတင်ရန်', `ရွေးထားသောစာရင်း ${pendingIds.value.length} ခုကို ဒိုင်ကြီးထံတင်မည် သေချာပါသလား?`)
 }
+const Confirm = async (confirmed) => {
+    const ids = [...pendingIds.value]
+    pendingIds.value = []
+    if (confirmed !== true || !ids.length || submitting.value) return
+    submitting.value = true
+    try {
+        const res = await otherorderService.ConfirmOrders(ids)
+        if (!res.data.success) throw new Error(res.data.messages?.[0] || 'စာရင်းတင်ခြင်း မအောင်မြင်ပါ။')
+        selectedIds.value = selectedIds.value.filter(id => !ids.includes(id))
+        snackbarRef.value.OpenSnackbar('success', res.data.messages[0])
+        await GetAll()
+    } catch (err) {
+        if (err.response?.status !== 401 && err.code !== 'ERR_CANCELED') {
+            snackbarRef.value.OpenSnackbar('red darken-2', err.response?.data?.messages?.[0] || err.message)
+        }
+    } finally {
+        submitting.value = false
+    }
+}
+const Edit = id => {
+    if (submitting.value) return
+    pendingIds.value = [id]
+    confirmRef.value.OpenDialog('ဒိုင်ကြီးထံတင်ရန်', 'ဤစာရင်းကို ဒိုင်ကြီးထံတင်မည် သေချာပါသလား?')
+}
+watch(() => pagination.value.search, () => {
+    selectedIds.value = []
+}, { deep: true })
 const GetAll = () => {
     loading.value = true
-    otherorderService.GetAllUnOrder(pagination.value).then((res) => {
+    return otherorderService.GetAllUnOrder(pagination.value).then((res) => {
         console.log(res)
         items.value = res.data.data
         recordTotal.value = res.data.total

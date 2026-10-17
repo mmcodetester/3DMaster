@@ -40,23 +40,18 @@
    </v-col>
 
    <SnackbarDialog ref="snackbarRef"/>
-   <UnauthorizeDialog ref="unauthorizeRef"/>
    
 </template>
 <script setup>
 import ordertotalService from '@/services/report/ordertotal.service';
 import SnackbarDialog from '@/components/SnackbarDialog.vue';
-import UnauthorizeDialog from '@/components/UnauthorizeDialog.vue';
-import constants from '@/utils/constants';
 import DailyCompairsm from './Dashboard/DailyCompairsm.vue';
 import MonthlyCompairsm from './Dashboard/MonthlyCompairsm.vue';
 import weeklyreportService from '@/services/report/weeklyreport.service';
 import WeeklyCompairsm from './Dashboard/WeeklyCompairsm.vue';
-import { useRouter } from 'vuetify/lib/composables/router.mjs';
+import { getLoginInfo } from '@/services/auth.session.js';
 import dropdownService from '@/services/dropdown.service.js';
 const snackbarRef = ref(null)
-const router = useRouter()
-const unauthorizeRef = ref(null)
 const year = new Date().getFullYear()
 const weeklyList = ref([])
 const ordertotal = ref({
@@ -67,37 +62,33 @@ const ordertotal = ref({
     monthly_total : 0,
     yearly_total : 0
 })
-const OrderTotal =()=>{
-    ordertotalService.Get().then((res)=>{
-        ordertotal.value = res.data
-    }).catch((err)=>{
-        if(err.message == constants.UnauthorizeMessage){
-            unauthorizeRef.value.OpenDialog()
-        }else{
-            snackbarRef.value.OpenSnackbar('red darken-2', err.message)
-        }
-    }).finally(()=>{
-         GetDetailsTotalAmount()
-    })
+const handleLoadError = err => {
+    if (err.response?.status === 401 || err.code === 'ERR_CANCELED' || !getLoginInfo()) return
+    snackbarRef.value?.OpenSnackbar('red darken-2', err.message)
 }
-const GetInitialWeeklyAmountList = () =>{
-    dropdownService.GetAllWeeklyAmountList().then((res)=>{
+const OrderTotal = async () => {
+    if (!getLoginInfo()) return
+    try {
+        const res = await ordertotalService.Get()
+        if (!getLoginInfo()) return
+        ordertotal.value = res.data
+        GetDetailsTotalAmount()
+    } catch (err) {
+        handleLoadError(err)
+    }
+}
+const GetInitialWeeklyAmountList = async () => {
+    if (!getLoginInfo()) return
+    try {
+        const res = await dropdownService.GetAllWeeklyAmountList()
+        if (!getLoginInfo()) return
         weeklyList.value = res.data
-         console.log(res.data)
-        const filter = res.data.filter(x=>x.status)[0]
-       
-        if(filter){
-            console.log('initital')
-            pagination.value.search.monthly_amount_id = filter.id
-        }else{
-             pagination.value.search.monthly_amount_id = res.data[0].id
-        }
-          OrderTotal()
-    }).catch((err)=>{
-
-    }).finally(()=>{
-       
-    })
+        const active = res.data.find(item => item.status) || res.data[0]
+        pagination.value.search.monthly_amount_id = active?.id ?? null
+        OrderTotal()
+    } catch (err) {
+        handleLoadError(err)
+    }
 }
 const pagination = ref({
     search: {
@@ -114,26 +105,17 @@ const pagination = ref({
     sortBy: [{ key: "number", order: "desc" }],
 })
 const GetDetailsTotalAmount = () => {
+    if (!getLoginInfo() || !pagination.value.search.monthly_amount_id) return
     weeklyreportService.GetDetailsTotalAmount(pagination.value).then((res) => {
+       if (!getLoginInfo()) return
        ordertotal.value.weekly_total = res.data.total
        ordertotal.value.extra_total = res.data.extra
     }).catch((err) => {
-        console.log(err)
-    }).finally(() => {
-
+        handleLoadError(err)
     })
 }
 
-const CheckLogin = () =>{
-    let user=JSON.parse(localStorage.getItem('2duser'));
-    if(!user){
-        router.push({name:'Login'})
-    }
-}
-onMounted(()=>{
-   CheckLogin()
-   
+onMounted(() => {
     GetInitialWeeklyAmountList()
-    
 })
 </script>

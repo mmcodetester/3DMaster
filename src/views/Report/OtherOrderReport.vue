@@ -258,12 +258,13 @@ const GetInitialWeeklyAmountList = (year) => {
             pagination.value.search.monthly_amount_id = filter.id
         }else {
             pagination.value.search.monthly_amount_id = res.data[0].id
-            GetAllData()
+            
         }
+        
     }).catch((err) => {
 
     }).finally(() => {
-
+        GetAllData()
     })
 }
 const GetUserList = () => {
