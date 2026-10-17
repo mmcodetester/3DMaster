@@ -114,7 +114,7 @@ const routes = [
     name:'LiveChat',
     component: LiveChat,
     meta:{
-      layout:'login-layout'
+      layout:'chat-layout'
     }
   },
 ]

@@ -1,5 +1,5 @@
 <template>
-  <v-container class="chat-page pa-2 pa-md-5" fluid @keydown="typingSound.unlock" @pointerdown="typingSound.unlock">
+  <v-container class="chat-page" fluid @keydown="typingSound.unlock" @pointerdown="typingSound.unlock">
     <v-alert
       v-if="chat.error || localError"
       class="mb-3"
@@ -664,8 +664,8 @@
 @media (prefers-reduced-motion: reduce) { .typing-dots i { animation: none; } }
 .conversation-avatar { position: relative; flex-shrink: 0; }
 .conversation-online-dot { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border: 2px solid rgb(var(--v-theme-surface)); border-radius: 50%; background: #16a36b; }
-.chat-page { max-width: 1440px; }
-.chat-shell { color: rgb(var(--v-theme-on-surface)); display: grid; grid-template-columns: 320px minmax(0, 1fr); height: calc(100dvh - 112px); min-height: 440px; background: rgb(var(--v-theme-surface)); border: 1px solid rgba(var(--v-theme-on-surface), .12); border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px #18264a08; }
+.chat-page { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; max-width: none; padding: 0; }
+.chat-shell { color: rgb(var(--v-theme-on-surface)); display: grid; grid-template-columns: 320px minmax(0, 1fr); flex: 1; min-height: 0; background: rgb(var(--v-theme-surface)); border: 1px solid rgba(var(--v-theme-on-surface), .12); border-radius: 0; overflow: hidden; }
 .conversation-sidebar { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid rgba(var(--v-theme-on-surface), .12); background: rgb(var(--v-theme-surface)); }
 .sidebar-content { flex: 1; overflow-y: auto; }
 .conversation-panel { display: flex; flex-direction: column; min-height: 0; min-width: 0; position: relative; }
@@ -686,7 +686,7 @@
 .min-width-0 { min-width: 0; }
 .back-button { display: none; }
 @media (max-width: 700px) {
-  .chat-shell { grid-template-columns: 1fr; height: calc(100dvh - 88px); min-height: 340px; border-radius: 10px; }
+  .chat-shell { grid-template-columns: 1fr; }
   .conversation-panel { display: none; }
   .show-conversation .conversation-sidebar { display: none; }
   .show-conversation .conversation-panel { display: flex; }
