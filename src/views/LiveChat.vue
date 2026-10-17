@@ -1,15 +1,22 @@
 <template>
   <v-container class="chat-page" fluid @keydown="typingSound.unlock" @pointerdown="typingSound.unlock">
-    <v-alert
-      v-if="chat.error || localError"
-      class="mb-3"
-      closable
-      type="warning"
-      variant="tonal"
-      @click:close="chat.error = ''; localError = ''"
+    <v-snackbar
+      v-model="errorVisible"
+      color="warning"
+      location="top"
+      :timeout="4000"
     >
       {{ localError || chat.error }}
-    </v-alert>
+      <template #actions>
+        <v-btn
+          aria-label="Dismiss chat error"
+          icon="mdi-close"
+          size="small"
+          variant="text"
+          @click="errorVisible = false"
+        />
+      </template>
+    </v-snackbar>
     <div class="chat-shell" :class="{ 'show-conversation': showConversation }">
       <aside class="conversation-sidebar">
         <div class="pa-4 border-b">
@@ -408,6 +415,15 @@
   })
   const search = ref(''), tab = ref('chats'), peopleFilter = ref('all')
   const draft = ref(''), sending = ref(false), creating = ref(false), localError = ref('')
+  const errorVisible = computed({
+    get: () => Boolean(chat.error || localError.value),
+    set: visible => {
+      if (!visible) {
+        chat.error = ''
+        localError.value = ''
+      }
+    },
+  })
   const showConversation = ref(false), groupDialog = ref(false), membersDialog = ref(false)
   const groupName = ref(''), selectedMembers = ref([]), groupError = ref('')
   const messageArea = ref(null), atBottom = ref(true)
@@ -664,7 +680,6 @@
 @media (prefers-reduced-motion: reduce) { .typing-dots i { animation: none; } }
 .conversation-avatar { position: relative; flex-shrink: 0; }
 .conversation-online-dot { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border: 2px solid rgb(var(--v-theme-surface)); border-radius: 50%; background: #16a36b; }
-.chat-page > .v-alert { flex: 0 0 auto; }
 .chat-page { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; max-width: none; padding: 0; }
 .chat-shell { color: rgb(var(--v-theme-on-surface)); display: grid; grid-template-columns: 320px minmax(0, 1fr); flex: 1; min-height: 0; background: rgb(var(--v-theme-surface)); border: 1px solid rgba(var(--v-theme-on-surface), .12); border-radius: 0; overflow: hidden; }
 .conversation-sidebar { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid rgba(var(--v-theme-on-surface), .12); background: rgb(var(--v-theme-surface)); }
