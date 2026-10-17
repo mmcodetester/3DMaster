@@ -1,6 +1,6 @@
 <template>
   <v-container class="chat-page" fluid @keydown="typingSound.unlock" @pointerdown="typingSound.unlock">
-    <v-snackbar
+    <!-- <v-snackbar
       v-model="errorVisible"
       color="warning"
       location="top"
@@ -16,7 +16,7 @@
           @click="errorVisible = false"
         />
       </template>
-    </v-snackbar>
+    </v-snackbar> -->
     <div class="chat-shell" :class="{ 'show-conversation': showConversation }">
       <aside class="conversation-sidebar">
         <div class="pa-4 border-b">
