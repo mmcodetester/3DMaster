@@ -46,5 +46,6 @@
 </script>
 
 <style scoped>
+:global(html:has(.chat-layout)) { overflow: hidden; }
 .chat-layout { display: block; height: 100dvh; min-height: 0; overflow: hidden; }
 </style>
