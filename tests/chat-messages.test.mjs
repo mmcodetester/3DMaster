@@ -1,3 +1,4 @@
+import { reactive } from 'vue'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { conversationOnline, conversationPreview, latestMessage, messageKey, mergeMessage, sortedMessages, clientMessageId } from '../src/utils/chat-messages.js'
@@ -42,4 +43,21 @@ test('older history cannot replace the latest preview and queued messages reconc
   assert.equal(conversationPreview(pending,1,'direct'),'Queued · You: Queued')
   assert.equal(conversationPreview({sender_id:2,sender:'Aye',text:'Hello\nteam'},1,'group'),'Aye: Hello team')
   assert.equal(conversationPreview(null,1,'direct'),'No messages yet')
+})
+
+test('reply and attachment previews remain structured-cloneable after Vue makes them reactive',()=>{
+ const message=reactive({server_id:9,client_id:'nested',sender_id:2,reply_to:{server_id:3,sender:'Two',text:'Original'},attachment:{id:'file-id',name:'notes.txt',mime:'text/plain',size:5}})
+ const latest=latestMessage(message,{...message,server_id:8})
+ assert.doesNotThrow(()=>structuredClone(latest))
+ assert.equal(latest.reply_to.text,'Original')
+})
+
+test('conversation previews never duplicate the queued binary attachment',()=>{
+ const blob=new Blob(['file'])
+ const message={client_id:'file',sender_id:1,text:'',file_blob:blob,file_name:'notes.txt',attachment:{name:'notes.txt',size:4}}
+ const preview=latestMessage(null,message)
+ assert.equal(preview.file_blob,undefined)
+ assert.equal(preview.attachment.name,'notes.txt')
+ const merged=mergeMessage(message,{...message,server_id:10})
+ assert.equal(merged.file_blob,blob)
 })

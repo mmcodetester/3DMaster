@@ -15,7 +15,7 @@
   import { Network } from '@capacitor/network'
   import { useRouter } from 'vue-router'
   import AppBar from '@/components/AppBar.vue'
-  import { configureChatNavigation, startChat, stopChat } from '@/services/chat.state'
+  import { configureChatNavigation, startChat, stopChat, syncChat } from '@/services/chat.state'
   import { useAppStore } from '@/stores/app'
   const router = useRouter()
   configureChatNavigation(roomId => {
@@ -40,6 +40,7 @@
     networkListener = await Network.addListener('networkStatusChange', status => {
       isConnected.value = status.connected
       store.SetNetworkState(status.connected)
+      if (status.connected) void syncChat()
     })
     await logCurrentNetworkStatus()
   })

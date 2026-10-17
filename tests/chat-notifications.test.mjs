@@ -3,19 +3,19 @@ import assert from 'node:assert/strict'
 import { createChatNotifications, notificationTarget, shouldNotifyChat } from '../src/utils/chat-notifications.js'
 function fixture(native=false,nativePushEnabled=true) {
   const delivered=[], values=new Map(), notifications=[], opened=[], state=[], nativeHandlers={}, localHandlers={}, appHandlers={}, devices=[]
-  let active=true,view=null,pushConfigured=false,permission='default',permissionPrompts=0
+  let active=true,view=null,pushConfigured=false,permission='default',permissionPrompts=0,registrationFails=false
   const listener=(store)=>(event,fn)=>{store[event]=fn;return Promise.resolve({remove(){if(store[event]===fn)delete store[event]}})}
   const local={addListener:listener(localHandlers),checkPermissions:async()=>({display:permission}),requestPermissions:async()=>{permissionPrompts++;permission='granted';return{display:permission}},createChannel:async()=>{},schedule:async data=>notifications.push(...data.notifications),getDeliveredNotifications:async()=>({notifications:[]}),removeDeliveredNotifications:async()=>{}}
   const push={addListener:listener(nativeHandlers),register:async()=>{await nativeHandlers.registration?.({value:'fake-fcm-token-abcdefghijklmnop'})},unregister:async()=>devices.push('unregister'),getDeliveredNotifications:async()=>({notifications:delivered}),removeDeliveredNotifications:async()=>{}}
   const app={addListener:listener(appHandlers),getState:async()=>({isActive:active})}
   const worker={showNotification:async(title,options)=>notifications.push({title,...options}),getNotifications:async()=>[]}
   const manager=createChatNotifications({native,nativePushEnabled,local,push,app,storage:{getItem:key=>values.get(key),setItem:(key,value)=>values.set(key,value)},
-    onState:value=>state.push(value),registerDevice:async(...args)=>{devices.push(args);return{data:{push_configured:pushConfigured}}},unregisterDevice:async(...args)=>devices.push(args),
+    onState:value=>state.push(value),registerDevice:async(...args)=>{devices.push(args);if(registrationFails)throw new Error('Offline');return{data:{push_configured:pushConfigured}}},unregisterDevice:async(...args)=>devices.push(args),
     browser:{supported:true,permission:()=>permission,requestPermission:async()=>{permissionPrompts++;permission='granted';return permission},registerWorker:async()=>worker,chatUrl:room=>`https://test.local/live-chat?room=${room}`,icon:'/icon',onMessage:()=>()=>{},show:async()=>{throw new Error('Worker should be used')}},
   })
   const options=account=>({accountId:account,token:`jwt-${account}`,installationId:'installation-abcdefghijklmnop',viewingRoom:()=>view,isActive:()=>active,onOpen:room=>opened.push(room),onIncoming(){},onActive:value=>{active=value}})
   const message={server_id:10,room_id:2,sender_id:3,sender:'Sender',text:'Hello'}
-  return{manager,options,message,values,notifications,opened,delivered,state,nativeHandlers,localHandlers,devices,permissionPrompts:()=>permissionPrompts,setActive:value=>{active=value},setView:value=>{view=value},setPush:value=>{pushConfigured=value}}
+  return{manager,options,message,values,notifications,opened,delivered,state,nativeHandlers,localHandlers,devices,permissionPrompts:()=>permissionPrompts,setActive:value=>{active=value},setView:value=>{view=value},setPermission:value=>{permission=value},setRegistrationFails:value=>{registrationFails=value},setPush:value=>{pushConfigured=value}}
 }
 test('notifications request permission only from Enable and suppress own/read messages and duplicates',async()=>{
   const f=fixture()
@@ -94,4 +94,34 @@ test('messages already displayed by Android push are not duplicated by reconnect
   await f.manager.notify(f.message,{type:'direct'})
   assert.equal(f.notifications.length,0)
   await f.manager.stop()
+})
+
+test('native permission already granted restores push without a stored preference or permission prompt',async()=>{
+ const f=fixture(true);f.setPermission('granted');f.setPush(true)
+ await f.manager.start(f.options(1))
+ assert.equal(f.state.at(-1).pushReady,true)
+ assert.equal(f.permissionPrompts(),0)
+ await f.manager.stop()
+})
+test('failed device binding retries using the token after connectivity returns',async()=>{
+ const f=fixture(true);f.setPush(true);f.setRegistrationFails(true)
+ await f.manager.start(f.options(1));await f.manager.enable()
+ assert.equal(f.state.at(-1).pushReady,false)
+ f.setRegistrationFails(false);await f.manager.retry()
+ assert.equal(f.state.at(-1).pushReady,true)
+ assert.equal(f.devices.filter(Array.isArray).length,2)
+ await f.manager.stop()
+})
+test('explicit native notification opt-out survives restart even with OS permission granted',async()=>{
+ const f=fixture(true);f.setPermission('granted');f.values.set('chat-notifications:1','disabled')
+ await f.manager.start(f.options(1));await f.manager.retry()
+ assert.equal(f.state.at(-1).enabled,false);assert.equal(f.devices.length,0)
+ await f.manager.stop()
+})
+
+test('attachment-only messages use the filename in local notification previews',async()=>{
+ const f=fixture();await f.manager.start(f.options(1));await f.manager.enable()
+ await f.manager.notify({...f.message,text:'',attachment:{name:'notes.pdf'}},{type:'direct'})
+ assert.equal(f.notifications[0].body,'Attachment: notes.pdf')
+ await f.manager.stop()
 })

@@ -8,7 +8,7 @@ export function shouldNotifyChat (message, accountId, viewingRoomId, active) {
 export function createChatNotifications (environment) {
   const { native, nativePushEnabled = true, local, push, app, storage, browser, registerDevice, unregisterDevice, onState } = environment
   let context = null, epoch = 0, handles = [], registration = null, pushToken = null
-  let cleanup = Promise.resolve()
+  let cleanup = Promise.resolve(), binding = null, preparing = null
   let state = { enabled: false, permission: 'default', pushReady: false, error: '', supported: native || browser.supported }
   const emit = patch => {
     state = { ...state, ...patch }
@@ -46,6 +46,7 @@ export function createChatNotifications (environment) {
       if (Number.isSafeInteger(messageId) && messageId > 0) {
         markSeen(context.accountId + ':' + messageId)
       }
+      context.onIncoming()
       context.onOpen(room)
     }
   }
@@ -113,6 +114,57 @@ export function createChatNotifications (environment) {
       ...(previousToken ? [push.unregister()] : []),
     ])
   }
+  async function bindToken (expected) {
+    if (!context || !pushToken || expected !== epoch || !state.enabled) {
+      return
+    }
+    if (binding?.expected === expected) {
+      return binding.work
+    }
+    const current = context, token = pushToken
+    const work = (async () => {
+      try {
+        const response = await registerDevice(current.installationId, token)
+        if (expected === epoch) {
+          emit({ pushReady: Boolean(response.data.push_configured), error: response.data.push_configured ? '' : 'Background alerts are not connected yet. Retrying automatically.' })
+        }
+      } catch {
+        if (expected === epoch) {
+          emit({ pushReady: false, error: 'Unable to connect background alerts. Retrying when connected.' })
+        }
+      }
+    })()
+    binding = { expected, work }
+    try {
+      await work
+    } finally {
+      if (binding?.work === work) {
+        binding = null
+      }
+    }
+  }
+  async function retry () {
+    if (!native || !context || !state.enabled || state.permission !== 'granted' || state.pushReady) {
+      return
+    }
+    const expected = epoch
+    if (preparing?.expected === expected) {
+      return preparing.work
+    }
+    const work = prepareDelivery(expected)
+    preparing = { expected, work }
+    try {
+      await work
+    } catch {
+      if (expected === epoch) {
+        emit({ pushReady: false, error: 'Unable to connect background alerts. Retrying when connected.' })
+      }
+    } finally {
+      if (preparing?.work === work) {
+        preparing = null
+      }
+    }
+  }
   async function prepareDelivery (expected) {
     if (native) {
       await local.createChannel({ id: 'chat-messages', name: 'Chat messages', description: 'New group and individual chat messages', importance: 4, visibility: 0, vibration: true })
@@ -124,7 +176,11 @@ export function createChatNotifications (environment) {
         return
       }
       try {
-        await push.register()
+        if (push.checkPermissions && (await push.checkPermissions()).receive !== 'granted') {
+          emit({ pushReady: false, error: 'Allow notifications in your device settings to receive background alerts.' })
+          return
+        }
+        await (pushToken ? bindToken(expected) : push.register())
       } catch {
         if (expected === epoch) {
           emit({ pushReady: false, error: 'Local notifications are ready. Background alerts are not connected yet.' })
@@ -165,6 +221,7 @@ export function createChatNotifications (environment) {
             void rememberDeliveredPush().finally(() => {
               if (expected === epoch) {
                 options.onActive(true)
+                void retry()
               }
             })
           } else {
@@ -196,16 +253,7 @@ export function createChatNotifications (environment) {
           return
         }
         pushToken = event.value
-        try {
-          const response = await registerDevice(options.installationId, event.value)
-          if (expected === epoch) {
-            emit({ pushReady: response.data.push_configured, error: response.data.push_configured ? '' : 'Local notifications are ready. Background alerts are not connected yet.' })
-          }
-        } catch {
-          if (expected === epoch) {
-            emit({ pushReady: false, error: 'Local notifications are ready. Unable to connect background alerts.' })
-          }
-        }
+        await bindToken(expected)
       }, expected)
       await listen(push, 'registrationError', () => {
         if (expected === epoch) {
@@ -224,7 +272,11 @@ export function createChatNotifications (environment) {
       if (expected !== epoch) {
         return
       }
-      emit({ permission: permission.display, enabled: state.enabled && permission.display === 'granted' })
+      const allowed = permission.display === 'granted' && safeRead(preferenceKey(options.accountId)) !== 'disabled'
+      emit({ permission: permission.display, enabled: allowed })
+      if (allowed) {
+        safeWrite(preferenceKey(options.accountId), 'enabled')
+      }
     } else {
       const permission = browser.permission()
       emit({ permission, enabled: state.enabled && permission === 'granted' })
@@ -295,9 +347,9 @@ export function createChatNotifications (environment) {
     markSeen(key)
     try {
       if (native) {
-        await local.schedule({ notifications: [{ id: message.server_id, title, body: message.text.slice(0, 200), channelId: 'chat-messages', smallIcon: 'ic_chat_notification', autoCancel: true, extra: data }] })
+        await local.schedule({ notifications: [{ id: message.server_id, title, body: (message.text || (message.attachment ? 'Attachment: ' + message.attachment.name : 'New message')).slice(0, 200), channelId: 'chat-messages', smallIcon: 'ic_chat_notification', autoCancel: true, extra: data }] })
       } else {
-        const options = { body: message.text.slice(0, 200), tag: `chat-${key}`, icon: browser.icon, data: { ...data, url: browser.chatUrl(message.room_id, current.accountId) }, renotify: false }
+        const options = { body: (message.text || (message.attachment ? 'Attachment: ' + message.attachment.name : 'New message')).slice(0, 200), tag: `chat-${key}`, icon: browser.icon, data: { ...data, url: browser.chatUrl(message.room_id, current.accountId) }, renotify: false }
         await (registration ? registration.showNotification(title, options) : browser.show(title, options, () => open(data)))
       }
       if (expected !== epoch) {
@@ -328,5 +380,5 @@ export function createChatNotifications (environment) {
     })
     return cleanup
   }
-  return { start, stop, enable, disable, notify, clearRoom: roomId => context ? clearDelivered(context.accountId, roomId) : Promise.resolve() }
+  return { start, stop, enable, disable, retry, notify, clearRoom: roomId => context ? clearDelivered(context.accountId, roomId) : Promise.resolve() }
 }

@@ -156,6 +156,18 @@
               @click="membersDialog = true"
             />
           </header>
+          <div v-if="activeRoom.pins?.length" class="pinned-strip px-3 py-2 border-b d-flex ga-2 overflow-x-auto">
+            <v-icon icon="mdi-pin" size="small" />
+            <v-btn
+              v-for="pin in activeRoom.pins"
+              :key="pin.server_id"
+              class="text-truncate"
+              max-width="240"
+              size="small"
+              variant="text"
+              @click="jumpTo(pin.server_id)"
+            >{{ pin.text || pin.attachment?.name || 'Photo/File' }}</v-btn>
+          </div>
           <div
             ref="messageArea"
             aria-label="Messages"
@@ -178,19 +190,45 @@
               <p>No messages yet. Say hello.</p>
               <p v-if="activeRoom.type === 'direct'" class="text-caption mt-2">You can send messages while this person is offline.</p>
             </div>
-            <div v-for="message in chat.messages" :key="message.key" class="message-row" :class="{ mine: message.sender_id === chat.accountId }">
+            <div
+              v-for="message in chat.messages"
+              :id="`chat-message-${message.server_id}`"
+              :key="message.key"
+              class="message-row"
+              :class="{ mine: message.sender_id === chat.accountId }"
+            >
               <v-avatar v-if="message.sender_id !== chat.accountId" class="mt-1 text-caption text-teal" color="teal-lighten-5" size="30">{{ initials(message.sender) }}</v-avatar>
               <div class="message-bubble" :class="{ 'own-bubble': message.sender_id === chat.accountId }">
                 <div v-if="message.sender_id !== chat.accountId" class="text-caption font-weight-bold mb-1 text-teal">{{ message.sender }}</div>
-                <div class="message-text text-body-2">{{ message.text }}</div>
+                <button v-if="message.reply_to" class="reply-quote text-start mb-2" type="button" @click="jumpTo(message.reply_to.server_id)"><strong>{{ message.reply_to.sender }}</strong><span class="d-block text-caption text-truncate">{{ message.reply_to.text || 'Photo/File' }}</span></button>
+                <ChatAttachment v-if="message.attachment" :attachment="message.attachment" :local-file="message.file_blob" @resize="atBottom && bottom()" />
+                <div v-if="message.text" class="message-text text-body-2">{{ message.text }}</div>
                 <div class="message-meta text-caption mt-1">
                   <span>{{ formatDate(message.date) }}</span>
                   <span v-if="message.sender_id === chat.accountId" class="ms-2">
                     <template v-if="message.syncStatus === 'pending'"><v-icon icon="mdi-clock-outline" size="12" /> Queued</template>
                     <template v-else-if="message.syncStatus === 'failed'"><v-icon icon="mdi-alert-circle-outline" size="12" /> Not sent</template>
-                    <template v-else><v-icon icon="mdi-check" size="12" /> Sent</template>
+                    <button v-else class="seen-status" type="button" @click="readersMessage = message"><v-icon :color="seenReaders(message).length > 0 ? 'primary' : undefined" :icon="seenReaders(message).length > 0 ? 'mdi-check-all' : 'mdi-check'" size="14" /> {{ seenReaders(message).length > 0 ? (activeRoom.type === 'direct' ? 'Seen' : `Seen by ${seenReaders(message).length}`) : 'Sent' }}</button>
                   </span>
                 </div>
+                <div v-if="message.server_id" class="d-flex align-center justify-end">
+                  <v-btn
+                    aria-label="Reply to message"
+                    icon="mdi-reply"
+                    size="x-small"
+                    variant="text"
+                    @click="replyTarget = message"
+                  />
+                  <v-btn
+                    :aria-label="isPinned(message) ? 'Unpin message' : 'Pin message'"
+                    :disabled="!chat.connected || pinning"
+                    :icon="isPinned(message) ? 'mdi-pin-off-outline' : 'mdi-pin-outline'"
+                    size="x-small"
+                    variant="text"
+                    @click="togglePin(message)"
+                  />
+                </div>
+                <p v-if="message.syncStatus === 'pending' && message.file_blob" class="text-caption">{{ message.uploadProgress ? `Uploading ${message.uploadProgress}%` : 'File queued' }}</p>
                 <div v-if="message.syncStatus === 'failed'" class="mt-2">
                   <p class="text-caption">{{ message.failure }}</p>
                   <v-btn size="x-small" variant="tonal" @click="retryMessage(message)">Retry</v-btn>
@@ -207,7 +245,31 @@
             @click="bottom"
           >Latest messages <v-icon end icon="mdi-arrow-down" /></v-btn>
           <div aria-live="polite" class="typing-line px-4 text-caption text-medium-emphasis"><span v-if="chat.typing" aria-hidden="true" class="typing-dots"><i /><i /><i /></span>{{ chat.typing }}</div>
+          <div v-if="replyTarget || selectedFile" class="px-3 py-2 border-t">
+            <div v-if="replyTarget" class="d-flex align-center ga-2"><v-icon icon="mdi-reply" size="small" /><div class="flex-grow-1 min-width-0 text-caption"><strong>Reply to {{ replyTarget.sender }}</strong><div class="text-truncate">{{ replyTarget.text || replyTarget.attachment?.name || 'Photo/File' }}</div></div><v-btn
+              aria-label="Cancel reply"
+              icon="mdi-close"
+              size="x-small"
+              variant="text"
+              @click="replyTarget = null"
+            /></div>
+            <div v-if="selectedFile" class="d-flex align-center ga-2 text-caption"><v-icon icon="mdi-paperclip" size="small" /><span class="flex-grow-1 text-truncate">{{ selectedFile.name }} · {{ (selectedFile.size / 1024 / 1024).toFixed(1) }} MB</span><v-btn
+              aria-label="Remove selected file"
+              icon="mdi-close"
+              size="x-small"
+              variant="text"
+              @click="selectedFile = null"
+            /></div>
+          </div>
           <form class="composer pa-3 border-t" @submit.prevent="submit">
+            <input
+              ref="fileInput"
+              accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.csv,.zip,.docx,.xlsx,.pptx"
+              class="d-none"
+              type="file"
+              @change="chooseFile"
+            >
+            <v-btn aria-label="Attach photo or file" icon="mdi-paperclip" variant="text" @click="fileInput.click()" />
             <v-menu :close-on-content-click="false" location="top">
               <template #activator="{ props }"><v-btn v-bind="props" aria-label="Choose emoji" icon="mdi-emoticon-happy-outline" variant="text" /></template>
               <v-card class="pa-2 overflow-y-auto" max-height="220" width="280"><v-btn
@@ -235,7 +297,7 @@
             <v-btn
               aria-label="Send message"
               color="primary"
-              :disabled="!draft.trim() || sending"
+              :disabled="(!draft.trim() && !selectedFile) || sending"
               icon="mdi-send"
               :loading="sending"
               type="submit"
@@ -250,6 +312,7 @@
       </section>
     </div>
 
+    <v-dialog max-width="420" :model-value="Boolean(readersMessage)" @update:model-value="!$event && (readersMessage = null)"><v-card title="Seen by"><v-list><v-list-item v-for="reader in seenReaders(readersMessage)" :key="reader.user_id" :subtitle="formatDate(reader.read_at)" :title="reader.name" /></v-list><v-card-text v-if="seenReaders(readersMessage).length === 0">Not seen yet.</v-card-text><v-card-actions><v-spacer /><v-btn @click="readersMessage = null">Close</v-btn></v-card-actions></v-card></v-dialog>
     <v-dialog v-model="groupDialog" max-width="480">
       <v-card rounded="lg" title="Create group chat">
         <v-card-text>
@@ -302,7 +365,8 @@
   import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { useRoute } from 'vue-router'
   import typingAudioUrl from '@/assets/typing.mp3'
-  import { chat, createRoom, loadOlder, retryMessage, selectRoom, sendMessage, sendTyping, setViewingRoom, startChat, toggleChatNotifications } from '@/services/chat.state'
+  import ChatAttachment from '@/components/ChatAttachment.vue'
+  import { chat, createRoom, loadOlder, markRoomRead, pinMessage, retryMessage, selectRoom, sendMessage, sendTyping, setViewingRoom, startChat, toggleChatNotifications } from '@/services/chat.state'
   import { conversationOnline, conversationPreview } from '@/utils/chat-messages'
   import Emoji from '@/utils/emoji'
   import { createTypingSound } from '@/utils/typing-sound'
@@ -319,6 +383,7 @@
   const showConversation = ref(false), groupDialog = ref(false), membersDialog = ref(false)
   const groupName = ref(''), selectedMembers = ref([]), groupError = ref('')
   const messageArea = ref(null), atBottom = ref(true)
+  const replyTarget = ref(null), selectedFile = ref(null), fileInput = ref(null), readersMessage = ref(null), pinning = ref(false)
   const media = window.matchMedia('(min-width: 701px)')
   const wideLayout = ref(media.matches)
   function onResize (event) {
@@ -358,16 +423,55 @@
     await nextTick()
     if (messageArea.value) messageArea.value.scrollTop = messageArea.value.scrollHeight
     atBottom.value = true
+    void markRoomRead()
   }
   function onScroll () {
     const element = messageArea.value
     if (element) atBottom.value = element.scrollHeight - element.scrollTop - element.clientHeight < 70
+    if (atBottom.value) void markRoomRead()
   }
   async function openRoom (id) {
     draft.value = ''
     showConversation.value = true
     await selectRoom(id)
     await bottom()
+  }
+  function chooseFile (event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (file.size === 0 || file.size > 10 * 1024 * 1024) {
+      localError.value = 'Choose a file between 1 byte and 10 MB.'
+      return
+    }
+    selectedFile.value = file
+  }
+  function isPinned (message) {
+    return activeRoom.value?.pins?.some(pin => pin.server_id === message.server_id) || false
+  }
+  async function togglePin (message) {
+    pinning.value = true
+    try {
+      await pinMessage(message, !isPinned(message))
+    } catch (error) {
+      localError.value = error.response?.data?.message || 'Unable to update pinned message.'
+    } finally {
+      pinning.value = false
+    }
+  }
+  async function jumpTo (id) {
+    await nextTick()
+    const element = document.querySelector(`#chat-message-${id}`)
+    if (element) {
+      element.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      atBottom.value = false
+    } else localError.value = 'This message is still syncing. Connect and try again.'
+  }
+  function seenReaders (message) {
+    if (!message?.server_id) return []
+    return (activeRoom.value?.reads || []).filter(reader => reader.user_id !== message.sender_id && reader.message_id >= message.server_id).map(reader => ({ ...reader,
+                                                                                                                                                             name: reader.user_id === chat.accountId ? 'You' : activeRoom.value?.members?.find(member => member.id === reader.user_id)?.name || chat.users.find(user => user.id === reader.user_id)?.name || 'Member',
+    }))
   }
   function openGroup () {
     groupName.value = ''
@@ -410,10 +514,12 @@
     }
   }
   async function submit () {
-    if (sending.value || !draft.value.trim()) return
+    if (sending.value || (!draft.value.trim() && !selectedFile.value)) return
     sending.value = true
     try {
-      await sendMessage(draft.value)
+      await sendMessage(draft.value, { reply: replyTarget.value, file: selectedFile.value })
+      replyTarget.value = null
+      selectedFile.value = null
       draft.value = ''
       await bottom()
     } catch {
@@ -444,6 +550,9 @@
     if (atBottom.value && !preservingScroll) void bottom()
   })
   watch(() => chat.activeId, () => {
+    replyTarget.value = null
+    selectedFile.value = null
+    readersMessage.value = null
     draft.value = ''
   })
   function visibilityChanged () {
@@ -469,6 +578,9 @@
 </script>
 
 <style scoped>
+.reply-quote { display: block; width: 100%; max-width: 280px; border-left: 3px solid rgb(var(--v-theme-primary)); padding: 6px 10px; background: rgba(var(--v-theme-primary), .08); color: inherit; border-radius: 4px; cursor: pointer; }
+.seen-status { color: inherit; cursor: pointer; }
+.pinned-strip { flex-shrink: 0; }
 .typing-dots { display: inline-flex; align-items: center; gap: 3px; margin-right: 8px; }
 .typing-dots i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; animation: typing-bounce 1s infinite; }
 .typing-dots i:nth-child(2) { animation-delay: .15s; }
@@ -476,22 +588,22 @@
 @keyframes typing-bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .typing-dots i { animation: none; } }
 .conversation-avatar { position: relative; flex-shrink: 0; }
-.conversation-online-dot { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border: 2px solid #fafbfd; border-radius: 50%; background: #16a36b; }
+.conversation-online-dot { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border: 2px solid rgb(var(--v-theme-surface)); border-radius: 50%; background: #16a36b; }
 .chat-page { max-width: 1440px; }
-.chat-shell { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: calc(100dvh - 112px); min-height: 440px; background: #fff; border: 1px solid #e4e8ee; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px #18264a08; }
-.conversation-sidebar { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid #e4e8ee; background: #fafbfd; }
+.chat-shell { color: rgb(var(--v-theme-on-surface)); display: grid; grid-template-columns: 320px minmax(0, 1fr); height: calc(100dvh - 112px); min-height: 440px; background: rgb(var(--v-theme-surface)); border: 1px solid rgba(var(--v-theme-on-surface), .12); border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px #18264a08; }
+.conversation-sidebar { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid rgba(var(--v-theme-on-surface), .12); background: rgb(var(--v-theme-surface)); }
 .sidebar-content { flex: 1; overflow-y: auto; }
 .conversation-panel { display: flex; flex-direction: column; min-height: 0; min-width: 0; position: relative; }
-.conversation-header { background: white; }
-.message-area { flex: 1; overflow-y: auto; background: #f4f6fa; }
+.conversation-header { background: rgb(var(--v-theme-surface)); }
+.message-area { flex: 1; overflow-y: auto; background: rgb(var(--v-theme-background)); }
 .message-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 16px; }
 .message-row.mine { justify-content: flex-end; }
-.message-bubble { max-width: 78%; padding: 10px 14px; border: 1px solid #e4e8ee; border-radius: 3px 15px 15px; background: #fff; min-width: 95px; }
-.own-bubble { border-radius: 15px 3px 15px 15px; background: #e6edff; border-color: #dbe5fd; }
+.message-bubble { max-width: 78%; padding: 10px 14px; border: 1px solid rgba(var(--v-theme-on-surface), .12); border-radius: 3px 15px 15px; background: rgb(var(--v-theme-surface)); min-width: 95px; }
+.own-bubble { border-radius: 15px 3px 15px 15px; background: rgba(var(--v-theme-primary), .14); border-color: rgba(var(--v-theme-primary), .24); }
 .message-text { white-space: pre-wrap; overflow-wrap: anywhere; }
-.message-meta { color: #637084; text-align: right; font-size: 10px !important; }
-.composer { display: flex; align-items: flex-end; gap: 8px; background: #fff; }
-.typing-line { min-height: 24px; background: #f4f6fa; }
+.message-meta { color: rgba(var(--v-theme-on-surface), .65); text-align: right; font-size: 10px !important; }
+.composer { display: flex; align-items: flex-end; gap: 8px; background: rgb(var(--v-theme-surface)); }
+.typing-line { min-height: 24px; background: rgb(var(--v-theme-background)); }
 .presence-dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: #9aa5b5; }
 .presence-dot.online { background: #16a36b; }
 .empty-conversation { margin: auto; padding-top: 70px; padding-bottom: 70px; }

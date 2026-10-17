@@ -103,14 +103,16 @@ async function saveMessage (message, account = chat.accountId) {
 }
 async function refreshRooms (expected = session) {
   const account = chat.accountId
-  const [rooms, users] = await Promise.all([chatService.GetRooms(), chatService.GetUsers()])
+  const [rooms, users] = await Promise.all([chatService.GetRooms(), chatService.GetUsers().catch(() => ({ data: chat.users }))])
   if (expected !== session) {
     return
   }
   const updated = rooms.data.map(room => ({ ...room, key: roomKey(room.id, account), account_id: account,
     last_message: latestMessage(chat.rooms.find(old => old.id === room.id)?.last_message, room.last_message),
     unread: chat.rooms.find(old => old.id === room.id)?.unread || 0,
-    sync_cursor: chat.rooms.find(old => old.id === room.id)?.sync_cursor || 0 }))
+    sync_cursor: chat.rooms.find(old => old.id === room.id)?.sync_cursor || 0,
+    pending_read: chat.rooms.find(old => old.id === room.id)?.pending_read || 0,
+    history_complete: chat.rooms.find(old => old.id === room.id)?.history_complete || false }))
   await cache.transaction('rw', cache.rooms, async () => {
     await cache.rooms.where('account_id').equals(account).delete()
     await cache.rooms.bulkPut(updated)
@@ -169,7 +171,10 @@ async function catchUpRoom (roomId, expected) {
   const storedRoom = await cache.rooms.get(key)
   // Socket deliveries and send acknowledgements must never advance the catch-up cursor:
   // a later message may arrive before the missing messages from an offline period.
-  let cursor = storedRoom?.sync_cursor || 0
+  const cachedMessages = await cache.messages.where('[account_id+room_id]').equals([account, roomId]).toArray()
+  const cachedIds = cachedMessages.filter(message => message.server_id).map(message => message.server_id)
+  let cursor = cachedIds.length > 0 ? (storedRoom?.sync_cursor || 0) : 0
+  const needsHistory = !storedRoom?.history_complete || cachedIds.length === 0
   let more = true
   while (more && expected === session) {
     const response = await chatService.Get({ room_id: roomId, limit: 100, ...(cursor ? { cursor, direction: 'forward' } : {}) })
@@ -199,6 +204,33 @@ async function catchUpRoom (roomId, expected) {
       }
     }
   }
+  // Rebuild missing history in pages; historical messages must not generate alerts.
+  if (needsHistory && expected === session) {
+    const rows = await cache.messages.where('[account_id+room_id]').equals([account, roomId]).toArray()
+    const ids = rows.filter(message => message.server_id).map(message => message.server_id)
+    let before = ids.length > 0 ? Math.min(...ids) : null
+    while (before && expected === session && online()) {
+      const response = await chatService.Get({ room_id: roomId, limit: 100, cursor: before, direction: 'backward' })
+      if (expected !== session) {
+        return
+      }
+      const received = response.data.messages
+      await saveMessages(received, account)
+      const oldest = received.length > 0 ? Math.min(...received.map(message => message.server_id)) : null
+      if (!response.data.has_more || !oldest || oldest >= before) {
+        await cache.rooms.update(key, { history_complete: true })
+        const room = chat.rooms.find(item => item.id === roomId)
+        if (room) {
+          room.history_complete = true
+        }
+        if (chat.activeId === roomId) {
+          chat.hasOlder = false
+        }
+        break
+      }
+      before = oldest
+    }
+  }
 }
 async function flush (expected = session) {
   const account = chat.accountId
@@ -212,7 +244,24 @@ async function flush (expected = session) {
       return
     }
     try {
-      const response = await chatService.SendMessage({ room_id: message.room_id, text: message.text, client_id: message.client_id })
+      if (message.file_blob && !message.attachment_id) {
+        const upload = await chatService.Upload(message.room_id, message.file_blob, progress => {
+          if (expected === session) {
+            const visible = chat.messages.find(item => item.key === message.key)
+            if (visible) {
+              visible.uploadProgress = progress
+            }
+          }
+        }, message.file_name, message.client_id)
+        message.attachment_id = upload.data.id
+        message.attachment = upload.data
+        await cache.messages.update(message.key, { attachment_id: upload.data.id, attachment: upload.data })
+      }
+      if (expected !== session || account !== chat.accountId) {
+        return
+      }
+      const response = await chatService.SendMessage({ room_id: message.room_id, text: message.text, client_id: message.client_id,
+        reply_to_id: message.reply_to_id || null, attachment_id: message.attachment_id || null })
       await saveMessage(response.data, account)
     } catch (error) {
       if (expected !== session) {
@@ -244,12 +293,30 @@ export async function syncChat () {
     if (expected !== session) {
       return
     }
-    await flush(expected)
-    for (const room of chat.rooms) {
+    void notificationDelivery.retry?.()
+    let syncError
+    try {
+      await flush(expected)
+    } catch (error) {
+      syncError = error
+    }
+    const rooms = [...chat.rooms.filter(room => room.id === chat.activeId), ...chat.rooms.filter(room => room.id !== chat.activeId)]
+    for (const room of rooms) {
       if (expected !== session) {
         return
       }
-      await syncRoom(room.id, expected)
+      try {
+        await syncRoom(room.id, expected)
+        const current = chat.rooms.find(item => item.id === room.id)
+        if (current?.pending_read) {
+          await postRead(room.id, current.pending_read)
+        }
+      } catch (error) {
+        syncError ||= error
+      }
+    }
+    if (syncError) {
+      throw syncError
     }
     if (expected === session) {
       chat.error = ''
@@ -334,6 +401,26 @@ export async function startChat () {
       report(error)
     }
   })
+  socket.on('receipt', receipt => {
+    if (expected === session) {
+      void applyReceipt(receipt)
+    }
+  })
+  socket.on('message_updated', async message => {
+    if (expected !== session) {
+      return
+    }
+    const account = chat.accountId
+    const rows = await cache.messages.where('[account_id+room_id]').equals([account, message.room_id]).toArray()
+    if (expected !== session || account !== chat.accountId) {
+      return
+    }
+    const existing = rows.find(item => item.server_id === message.server_id)
+    if (existing) {
+      await saveMessage({ ...existing, ...message }, account)
+    }
+    void syncChat()
+  })
   socket.on('typing', data => {
     if (expected !== session || data.room_id !== chat.activeId || data.sender_id === chat.accountId) {
       return
@@ -358,6 +445,7 @@ export async function startChat () {
       }
       chat.requestedRoomId = roomId
       navigateToChat(roomId)
+      void syncChat()
     },
     onIncoming: () => {
       if (expected === session) {
@@ -448,12 +536,18 @@ export async function createRoom (input) {
   await selectRoom(response.data.id)
   return response.data
 }
-export async function sendMessage (text) {
+export async function sendMessage (text, options = {}) {
   const login = getLoginInfo()
-  if (!login || !chat.activeId || !text.trim() || text.trim().length > 4000) {
+  if (!login || !chat.activeId || (!text.trim() && !options.file) || text.trim().length > 4000) {
     return
   }
+  if (options.file && (options.file.size > 10 * 1024 * 1024 || options.file.size === 0)) {
+    throw new Error('Choose a file up to 10 MB.')
+  }
   await saveMessage({ room_id: chat.activeId, sender_id: chat.accountId, sender: login.data.name,
+    reply_to_id: options.reply?.server_id || null, reply_to: options.reply ? { server_id: options.reply.server_id, sender: options.reply.sender, text: options.reply.text } : null,
+    file_blob: options.file || null, file_name: options.file?.name || null,
+    attachment: options.file ? { name: options.file.name, mime: options.file.type, size: options.file.size } : null,
     client_id: clientMessageId(), text: text.trim(), date: new Date().toISOString(), syncStatus: 'pending' })
   void syncChat()
 }
@@ -484,4 +578,56 @@ export async function setViewingRoom (id) {
     room.unread = 0
     await cache.rooms.update(roomKey(id), { unread: 0 })
   }
+}
+
+async function applyReceipt (receipt) {
+  const account = chat.accountId
+  const room = chat.rooms.find(item => item.id === receipt.room_id)
+  if (!room) {
+    return
+  }
+  const reads = [...(room.reads || [])]
+  const previous = reads.find(item => item.user_id === receipt.user_id)
+  if (previous && previous.message_id >= receipt.message_id) {
+    if (receipt.user_id === account && previous.message_id >= (room.pending_read || 0)) {
+      room.pending_read = 0
+      await cache.rooms.update(roomKey(room.id, account), { pending_read: 0 })
+    }
+    return
+  }
+  if (previous) {
+    Object.assign(previous, receipt)
+  } else {
+    reads.push(receipt)
+  }
+  room.reads = reads
+  if (receipt.user_id === account && receipt.message_id >= (room.pending_read || 0)) {
+    room.pending_read = 0
+  }
+  await cache.rooms.update(roomKey(room.id, account), { reads: reads.map(item => ({ user_id: item.user_id, room_id: item.room_id, message_id: item.message_id, read_at: item.read_at })), pending_read: room.pending_read || 0 })
+}
+async function postRead (roomId, messageId) {
+  const account = chat.accountId, expected = session
+  const response = await chatService.Read(roomId, messageId)
+  if (expected === session && account === chat.accountId) {
+    await applyReceipt(response.data)
+  }
+}
+export async function markRoomRead () {
+  const room = chat.rooms.find(item => item.id === chat.activeId)
+  if (!room || room.id !== chat.viewingRoomId || !isChatActive()) {
+    return
+  }
+  const id = Math.max(0, ...chat.messages.map(message => message.server_id || 0))
+  const previous = (room.reads || []).find(item => item.user_id === chat.accountId)?.message_id || 0
+  if (!id || id <= Math.max(previous, room.pending_read || 0)) {
+    return
+  }
+  room.pending_read = id
+  await cache.rooms.update(roomKey(room.id), { pending_read: id })
+  void syncChat()
+}
+export async function pinMessage (message, pinned) {
+  await chatService.Pin(message.room_id, message.server_id, pinned)
+  await syncChat()
 }
