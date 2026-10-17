@@ -2,6 +2,8 @@ import axios from 'axios'
 import api from './api'
 const requestOptions = { timeout: 15_000 }
 export default {
+  Delete: (roomId, messageId) => api.delete(`/chat/rooms/${roomId}/messages/${messageId}`, requestOptions),
+  Deletions: roomId => api.get(`/chat/rooms/${roomId}/deletions`, requestOptions),
   Read: (roomId, messageId) => api.post(`/chat/rooms/${roomId}/read`, { message_id: messageId }, requestOptions),
   Pin: (roomId, messageId, pinned) => api.post(`/chat/rooms/${roomId}/messages/${messageId}/pin`, { pinned }, requestOptions),
   Upload: (roomId, file, onProgress, name, clientId) => api.post(`/chat/rooms/${roomId}/attachments`, file, {

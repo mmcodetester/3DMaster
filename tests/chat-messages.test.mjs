@@ -61,3 +61,14 @@ test('conversation previews never duplicate the queued binary attachment',()=>{
  const merged=mergeMessage(message,{...message,server_id:10})
  assert.equal(merged.file_blob,blob)
 })
+
+test('deletion removes cached content and cannot be resurrected by stale deliveries', () => {
+  const original = { server_id: 10, sender_id: 2, client_id: 'delete-me', text: 'Private', attachment: { id: 'file' }, file_blob: new Blob(['private']), reply_to: { server_id: 1, text: 'quote' }, pinned: true }
+  const deleted = mergeMessage(original, { ...original, deleted: true })
+  assert.equal(deleted.text, 'Deleted Message')
+  assert.equal(deleted.attachment, null)
+  assert.equal(deleted.file_blob, null)
+  assert.equal(deleted.reply_to, null)
+  assert.equal(deleted.pinned, false)
+  assert.equal(mergeMessage(deleted, original).text, 'Deleted Message')
+})

@@ -158,15 +158,24 @@
           </header>
           <div v-if="activeRoom.pins?.length" class="pinned-strip px-3 py-2 border-b d-flex ga-2 overflow-x-auto">
             <v-icon icon="mdi-pin" size="small" />
-            <v-btn
-              v-for="pin in activeRoom.pins"
-              :key="pin.server_id"
-              class="text-truncate"
-              max-width="240"
-              size="small"
-              variant="text"
-              @click="jumpTo(pin.server_id)"
-            >{{ pin.text || pin.attachment?.name || 'Photo/File' }}</v-btn>
+            <div v-for="pin in activeRoom.pins" :key="pin.server_id" class="d-flex align-center flex-shrink-0">
+              <v-btn
+                aria-label="Go to pinned message"
+                class="text-truncate"
+                max-width="240"
+                size="small"
+                variant="text"
+                @click="jumpTo(pin.server_id)"
+              >{{ pin.text || (pin.attachment?.mime?.startsWith('image/') ? 'Photo' : pin.attachment?.name) || 'Photo/File' }}</v-btn>
+              <v-btn
+                aria-label="Unpin pinned message"
+                :disabled="!chat.connected || pinning"
+                icon="mdi-pin-off-outline"
+                size="x-small"
+                variant="text"
+                @click.stop="togglePin(pin)"
+              />
+            </div>
           </div>
           <div
             ref="messageArea"
@@ -211,7 +220,16 @@
                     <button v-else class="seen-status" type="button" @click="readersMessage = message"><v-icon :color="seenReaders(message).length > 0 ? 'primary' : undefined" :icon="seenReaders(message).length > 0 ? 'mdi-check-all' : 'mdi-check'" size="14" /> {{ seenReaders(message).length > 0 ? (activeRoom.type === 'direct' ? 'Seen' : `Seen by ${seenReaders(message).length}`) : 'Sent' }}</button>
                   </span>
                 </div>
-                <div v-if="message.server_id" class="d-flex align-center justify-end">
+                <div v-if="message.server_id && !message.deleted" class="d-flex align-center justify-end">
+                  <v-btn
+                    v-if="message.sender_id === chat.accountId"
+                    aria-label="Delete message"
+                    :disabled="!chat.connected"
+                    icon="mdi-delete-outline"
+                    size="x-small"
+                    variant="text"
+                    @click="deleteTarget = message"
+                  />
                   <v-btn
                     aria-label="Reply to message"
                     icon="mdi-reply"
@@ -312,6 +330,16 @@
       </section>
     </div>
 
+    <v-dialog v-model="deleteDialog" max-width="400" :persistent="deleting">
+      <v-card title="Delete message?">
+        <v-card-text>This message will show as “Deleted Message” for everyone.</v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn :disabled="deleting" @click="deleteTarget = null">Cancel</v-btn>
+          <v-btn color="error" :loading="deleting" @click="removeMessage">Delete</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-dialog max-width="420" :model-value="Boolean(readersMessage)" @update:model-value="!$event && (readersMessage = null)"><v-card title="Seen by"><v-list><v-list-item v-for="reader in seenReaders(readersMessage)" :key="reader.user_id" :subtitle="formatDate(reader.read_at)" :title="reader.name" /></v-list><v-card-text v-if="seenReaders(readersMessage).length === 0">Not seen yet.</v-card-text><v-card-actions><v-spacer /><v-btn @click="readersMessage = null">Close</v-btn></v-card-actions></v-card></v-dialog>
     <v-dialog v-model="groupDialog" max-width="480">
       <v-card rounded="lg" title="Create group chat">
@@ -366,7 +394,7 @@
   import { useRoute } from 'vue-router'
   import typingAudioUrl from '@/assets/typing.mp3'
   import ChatAttachment from '@/components/ChatAttachment.vue'
-  import { chat, createRoom, loadOlder, markRoomRead, pinMessage, retryMessage, selectRoom, sendMessage, sendTyping, setViewingRoom, startChat, toggleChatNotifications } from '@/services/chat.state'
+  import { chat, createRoom, deleteMessage, loadOlder, markRoomRead, pinMessage, retryMessage, selectRoom, sendMessage, sendTyping, setViewingRoom, startChat, toggleChatNotifications } from '@/services/chat.state'
   import { conversationOnline, conversationPreview } from '@/utils/chat-messages'
   import Emoji from '@/utils/emoji'
   import { createTypingSound } from '@/utils/typing-sound'
@@ -449,6 +477,29 @@
   function isPinned (message) {
     return activeRoom.value?.pins?.some(pin => pin.server_id === message.server_id) || false
   }
+  const deleteTarget = ref(null), deleting = ref(false)
+  const deleteDialog = computed({
+    get: () => Boolean(deleteTarget.value),
+    set: value => {
+      if (!value && !deleting.value) deleteTarget.value = null
+    },
+  })
+  async function removeMessage () {
+    const message = deleteTarget.value
+    if (!message || deleting.value) return
+    deleting.value = true
+    try {
+      await deleteMessage(message)
+      if (replyTarget.value?.server_id === message.server_id) replyTarget.value = null
+      deleteTarget.value = null
+    } catch (error) {
+      localError.value = error.response?.data?.message || 'Unable to delete message. Please try again.'
+      deleteTarget.value = null
+    } finally {
+      deleting.value = false
+    }
+  }
+
   async function togglePin (message) {
     pinning.value = true
     try {
@@ -460,12 +511,31 @@
     }
   }
   async function jumpTo (id) {
-    await nextTick()
-    const element = document.querySelector(`#chat-message-${id}`)
-    if (element) {
-      element.scrollIntoView({ block: 'center', behavior: 'smooth' })
-      atBottom.value = false
-    } else localError.value = 'This message is still syncing. Connect and try again.'
+    const room = chat.activeId
+    atBottom.value = false
+    preservingScroll = true
+    try {
+      await nextTick()
+      let element = messageArea.value?.querySelector(`#chat-message-${id}`)
+      while (!element && chat.hasOlder && chat.connected && !chat.loading && chat.activeId === room) {
+        const count = chat.messages.length
+        await loadOlder()
+        await nextTick()
+        if (chat.activeId !== room) return
+        element = messageArea.value?.querySelector(`#chat-message-${id}`)
+        if (chat.messages.length === count) break
+      }
+      if (chat.activeId !== room) return
+      if (element && messageArea.value) {
+        const area = messageArea.value
+        const top = area.scrollTop + element.getBoundingClientRect().top - area.getBoundingClientRect().top
+        area.scrollTo({ top: Math.max(0, top - (area.clientHeight - element.clientHeight) / 2), behavior: 'smooth' })
+      } else {
+        localError.value = 'Message unavailable. Connect and try again.'
+      }
+    } finally {
+      preservingScroll = false
+    }
   }
   function seenReaders (message) {
     if (!message?.server_id) return []
@@ -549,7 +619,12 @@
   watch(() => chat.messages.length, () => {
     if (atBottom.value && !preservingScroll) void bottom()
   })
+  watch(() => chat.messages, messages => {
+    if (messages.find(message => message.server_id === replyTarget.value?.server_id)?.deleted) replyTarget.value = null
+    if (messages.find(message => message.server_id === deleteTarget.value?.server_id)?.deleted && !deleting.value) deleteTarget.value = null
+  })
   watch(() => chat.activeId, () => {
+    deleteTarget.value = null
     replyTarget.value = null
     selectedFile.value = null
     readersMessage.value = null

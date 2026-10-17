@@ -165,6 +165,23 @@ async function syncRoom (roomId, expected = session) {
     }
   }
 }
+async function reconcileDeletions (roomId, messages, account, expected) {
+  const response = await chatService.Deletions(roomId)
+  if (expected !== session || account !== chat.accountId) {
+    return
+  }
+  const deletedIds = new Set(response.data.map(item => item.message_id))
+  for (const message of messages) {
+    if (expected !== session || account !== chat.accountId) {
+      return
+    }
+    if (deletedIds.has(message.server_id) && !message.deleted) {
+      await saveMessage({ ...message, deleted: true }, account)
+    } else if (deletedIds.has(message.reply_to?.server_id) && message.reply_to.text !== 'Deleted Message') {
+      await saveMessage({ ...message, reply_to: { ...message.reply_to, text: 'Deleted Message' } }, account)
+    }
+  }
+}
 async function catchUpRoom (roomId, expected) {
   const account = chat.accountId
   const key = roomKey(roomId, account)
@@ -172,6 +189,7 @@ async function catchUpRoom (roomId, expected) {
   // Socket deliveries and send acknowledgements must never advance the catch-up cursor:
   // a later message may arrive before the missing messages from an offline period.
   const cachedMessages = await cache.messages.where('[account_id+room_id]').equals([account, roomId]).toArray()
+  await reconcileDeletions(roomId, cachedMessages, account, expected)
   const cachedIds = cachedMessages.filter(message => message.server_id).map(message => message.server_id)
   let cursor = cachedIds.length > 0 ? (storedRoom?.sync_cursor || 0) : 0
   const needsHistory = !storedRoom?.history_complete || cachedIds.length === 0
@@ -629,5 +647,16 @@ export async function markRoomRead () {
 }
 export async function pinMessage (message, pinned) {
   await chatService.Pin(message.room_id, message.server_id, pinned)
+  await syncChat()
+}
+
+export async function deleteMessage (message) {
+  const account = chat.accountId
+  const expected = session
+  const response = await chatService.Delete(message.room_id, message.server_id)
+  if (expected !== session || account !== chat.accountId) {
+    return
+  }
+  await saveMessage(response.data, account)
   await syncChat()
 }

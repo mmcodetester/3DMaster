@@ -29,6 +29,8 @@ function setup() {
   const sockets=[], requests=[], serverMessages=[], uploads=[], readCalls=[]
   const rooms=[{id:1,type:'general',name:'General',members:[]}]
   const service={
+    Delete:async(room,id)=>{const message=serverMessages.find(item=>item.room_id===room&&item.server_id===id);Object.assign(message,{deleted:true,text:'Deleted Message',attachment:null,pinned:false});return{data:structuredClone(message)}},
+    Deletions:async room=>({data:serverMessages.filter(item=>item.room_id===room && item.deleted).map(item=>({message_id:item.server_id}))}),
     Upload:async(room,file,progress,name,clientId)=>{uploads.push({room,file,name,clientId});return{data:{id:'00000000-0000-0000-0000-000000000001',name,mime:'text/plain',size:file.size}}},
     Read:async(room,message)=>{readCalls.push({room,message});return{data:{room_id:room,user_id:login.data.id,message_id:message,read_at:new Date().toISOString()}}},
     GetRooms:async()=>{if(waitRooms) await waitRooms;return {data:structuredClone(rooms)}},
@@ -61,7 +63,7 @@ function setup() {
   }
   let source=fs.readFileSync(new URL('../src/services/chat.state.js',import.meta.url),'utf8')
     .replace(/^import .*$/gm,'').replace(/export /g,'').replace('import.meta.env.VITE_SOCKET_URL',"''")
-  source+='\n;({chat,startChat,stopChat,syncChat,selectRoom,sendMessage,setViewingRoom,markRoomRead})'
+  source+='\n;({chat,startChat,stopChat,syncChat,selectRoom,sendMessage,setViewingRoom,markRoomRead,deleteMessage})'
   const state=vm.runInNewContext(source,context)
   async function settle(){for(let i=0;i<15;i++)await new Promise(resolve=>setImmediate(resolve))}
   return {state,context,tables,sockets,requests,serverMessages,uploads,readCalls,notificationCalls,setLogin:value=>{login=value},setFail:value=>{failSend=value},setWait:value=>{waitRooms=value},settle}
@@ -225,5 +227,34 @@ test('duplicate own receipt clears a pending read without moving another device 
  f.sockets[0].handlers.receipt({user_id:1,room_id:1,message_id:20,read_at:'2026-10-16T00:00:00Z'})
  await f.settle()
  assert.equal(room.pending_read,0);assert.equal(room.reads[0].message_id,30)
+ f.state.stopChat()
+})
+
+test('reconnect reconciles deletions older than the history cursor and masks cached reply quotes', async () => {
+ const f=setup()
+ const first={server_id:1,client_id:'old',room_id:1,sender_id:2,text:'Remove me',attachment:{id:'file',name:'secret.pdf'}}
+ f.serverMessages.push(first,{server_id:2,client_id:'reply',room_id:1,sender_id:1,text:'Reply',reply_to:{server_id:1,sender:'Two',text:'Remove me'}})
+ await f.state.startChat();await f.settle()
+ assert.equal(f.state.chat.messages[0].text,'Remove me')
+ first.deleted=true;first.text='Deleted Message';first.attachment=null
+ await f.state.syncChat();await f.settle()
+ assert.equal(f.state.chat.messages[0].text,'Deleted Message')
+ assert.equal(f.state.chat.messages[0].attachment,null)
+ assert.equal(f.state.chat.messages[1].reply_to.text,'Deleted Message')
+ await f.sockets[0].handlers.message({...first,deleted:false,text:'Stale content'})
+ assert.equal(f.state.chat.messages[0].text,'Deleted Message')
+ f.state.stopChat()
+})
+
+test('delete acknowledgement and realtime updates replace cached messages immediately', async () => {
+ const f=setup()
+ f.serverMessages.push({server_id:1,client_id:'mine',room_id:1,sender_id:1,text:'Mine'})
+ await f.state.startChat();await f.settle()
+ await f.state.deleteMessage(f.state.chat.messages[0]);await f.settle()
+ assert.equal(f.state.chat.messages[0].deleted,true)
+ assert.equal(f.state.chat.rooms[0].last_message.text,'Deleted Message')
+ await f.sockets[0].handlers.message_updated({...f.serverMessages[0],deleted:false,text:'Late pin update'})
+ await f.settle()
+ assert.equal(f.state.chat.messages[0].text,'Deleted Message')
  f.state.stopChat()
 })

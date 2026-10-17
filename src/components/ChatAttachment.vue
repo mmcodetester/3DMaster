@@ -6,10 +6,10 @@
       class="photo-preview"
       type="button"
       @click="expanded = true"
-    ><img :alt="attachment.name" :src="preview" @load="$emit('resize')"></button>
+    ><img :alt="isImage ? 'Photo' : attachment.name" :src="preview" @load="$emit('resize')"></button>
     <div class="d-flex align-center ga-2">
-      <v-icon :icon="attachment.mime?.startsWith('image/') ? 'mdi-image-outline' : 'mdi-file-document-outline'" size="small" />
-      <span class="text-caption text-truncate">{{ attachment.name }} · {{ sizeLabel }}</span>
+      <v-icon v-if="!isImage" icon="mdi-file-document-outline" size="small" />
+      <span v-if="!isImage" class="text-caption text-truncate">{{ attachment.name }} · {{ sizeLabel }}</span>
       <v-btn
         aria-label="Save or share attachment"
         :disabled="busy"
@@ -21,7 +21,7 @@
       />
     </div>
     <p v-if="error" class="text-caption text-error">{{ error }} <button type="button" @click="loadPreview">Retry</button></p>
-    <v-dialog v-model="expanded" max-width="900"><v-card><v-img :alt="attachment.name" contain max-height="80vh" :src="preview" /><v-card-actions><v-btn @click="download">Save / share</v-btn><v-spacer /><v-btn @click="expanded = false">Close</v-btn></v-card-actions></v-card></v-dialog>
+    <v-dialog v-model="expanded" max-width="900"><v-card><v-img :alt="isImage ? 'Photo' : attachment.name" contain max-height="80vh" :src="preview" /><v-card-actions><v-btn @click="download">Save / share</v-btn><v-spacer /><v-btn @click="expanded = false">Close</v-btn></v-card-actions></v-card></v-dialog>
   </div>
 </template>
 <script setup>
@@ -30,6 +30,7 @@
   const props = defineProps({ attachment: { type: Object, required: true }, localFile: { type: Blob, default: null } })
   defineEmits(['resize'])
   const root = ref(null), preview = ref(''), expanded = ref(false), error = ref(''), busy = ref(false)
+  const isImage = computed(() => props.attachment.mime?.startsWith('image/'))
   const sizeLabel = computed(() => props.attachment.size >= 1024 * 1024 ? `${(props.attachment.size / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(props.attachment.size / 1024)} KB`)
   let observer, disposed = false
   async function loadPreview () {

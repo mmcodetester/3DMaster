@@ -7,6 +7,9 @@ function plainMessage (message) {
     ...(message.attachment ? { attachment: { ...message.attachment } } : {}) }
 }
 export function mergeMessage (existing, incoming) {
+  if (existing?.deleted || incoming.deleted) {
+    return { ...plainMessage(existing), ...plainMessage(incoming), deleted: true, text: 'Deleted Message', attachment: null, attachment_id: null, file_blob: null, file_name: null, reply_to: null, pinned: false, syncStatus: 'synced' }
+  }
   return { ...plainMessage(existing), ...plainMessage(incoming), syncStatus: incoming.server_id ? 'synced' : (existing?.syncStatus || 'pending') }
 }
 export function sortedMessages (messages) {
