@@ -664,6 +664,7 @@
 @media (prefers-reduced-motion: reduce) { .typing-dots i { animation: none; } }
 .conversation-avatar { position: relative; flex-shrink: 0; }
 .conversation-online-dot { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border: 2px solid rgb(var(--v-theme-surface)); border-radius: 50%; background: #16a36b; }
+.chat-page > .v-alert { flex: 0 0 auto; }
 .chat-page { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; max-width: none; padding: 0; }
 .chat-shell { color: rgb(var(--v-theme-on-surface)); display: grid; grid-template-columns: 320px minmax(0, 1fr); flex: 1; min-height: 0; background: rgb(var(--v-theme-surface)); border: 1px solid rgba(var(--v-theme-on-surface), .12); border-radius: 0; overflow: hidden; }
 .conversation-sidebar { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid rgba(var(--v-theme-on-surface), .12); background: rgb(var(--v-theme-surface)); }
